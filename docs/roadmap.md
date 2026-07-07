@@ -60,13 +60,40 @@
 - [ ] `infra/monitoring/telemetry.py` - Telemetria
 - [ ] `infra/monitoring/logger.py` - Logging estruturado
 
-## 🧠 Fase 4: Memória
+## ✅ Fase 4: Memória (Completo)
 
-- [ ] `memory/manager.py` - Gerenciador principal
-- [ ] `memory/short_term.py` - Memória de curto prazo
-- [ ] `memory/long_term.py` - Memória de longo prazo
-- [ ] `memory/embeddings.py` - Embeddings para busca
-- [ ] `memory/indexer.py` - Indexação e recuperação
+- [x] `memory/manager.py` - Gerenciador principal com arquitetura cognitiva completa
+- [x] `memory/short_term.py` - Memória de curto prazo (integrada ao manager)
+- [x] `memory/long_term.py` - Memória de longo prazo (grafo holográfico)
+- [x] `memory/embeddings.py` - Embeddings para busca semântica (suporte no grafo)
+- [x] `memory/indexer.py` - Indexação e recuperação (índices por tipo e tags)
+
+### 4 Pilares Implementados:
+
+1. **Memória Holográfica & Associativa** (`HolographicMemoryGraph`)
+   - Grafo dinâmico de conhecimento com nodos e associações
+   - Busca por similaridade de contexto (embedding)
+   - Busca associativa explorando conexões do grafo
+   - Índices por tipo de memória e tags para recuperação rápida
+
+2. **Processo de Consolidação Noturna** (`NightlyConsolidation`)
+   - Deduplicação automática de memórias similares
+   - Compressão de memórias antigas não acessadas
+   - Esquecimento ativo baseado na curva de Ebbinghaus
+   - Fortalecimento de associações importantes
+   - Execução em background quando agente está ocioso
+
+3. **O "Subconsciente"** (`SubconsciousProcessor`)
+   - Armazena conexões fracas entre memórias
+   - Gera insights combinando memórias semanticas e episódicas
+   - Simula intuição através de padrões ocultos
+   - Processa "sonhos" durante consolidação noturna
+
+4. **Linha do Tempo Episódica vs. Semântica** (`MemoryType`)
+   - Separação clara: EPISODIC ("o que eu fiz") vs SEMANTIC ("o que eu sei")
+   - Estados de consolidação: RAW → CONSOLIDATED → COMPRESSED → FORGETTING
+   - Curva de esquecimento personalizada por importância
+   - Evita confusão e otimiza recuperação de contexto
 
 ## 🛡️ Fase 5: Segurança
 
