@@ -289,14 +289,15 @@ def render_performance_metrics(metrics: Dict[str, Any]) -> None:
 def run_dashboard_demo():
     """Executa demo do dashboard com dados simulados"""
     st.set_page_config(
-        page_title="Agente Autônomo - Dashboard",
+        page_title="Aria v2.0.0 - Dashboard",
         page_icon="🤖",
         layout="wide",
         initial_sidebar_state="expanded"
     )
     
-    st.title("🤖 Dashboard do Agente Autônomo")
-    st.markdown("**Monitoramento em Tempo Real da Consciência Artificial**")
+    st.title("🎵 Aria v2.0.0 - Dashboard do Agente Autônomo")
+    st.markdown("**Monitoramento em Tempo Real da Consciência Artificial**\n\n" +
+        "**Identidade:** Aria v2.0.0 | **Estilo:** Caloroso, Autêntico, Colaborativo | **Princípios:** Ética Constitutiva")
     
     # Sidebar com controles
     with st.sidebar:

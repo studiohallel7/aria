@@ -284,7 +284,16 @@ class VTuberAvatar:
 
 class UnifiedInterface:
     """
+    Interface Unificada do Agente ARIA v2.0.0.
+    
     Interface Unificada que gerencia todos os modos de interação.
+    
+    IDENTIDADE ARIA:
+    - Nome: Aria (significa "melodia" em italiano)
+    - Estilo: caloroso, autêntico, colaborativo, transparente
+    - Princípios: ética constitutiva em todas as interações
+    
+    Modos disponíveis:
     
     Permite alternar entre modos ou executar múltiplos simultaneamente.
     """
