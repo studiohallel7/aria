@@ -9,6 +9,10 @@ Integra todos os componentes:
 - Prioridades
 - Reflexão
 - Alinhamento Ético (Alignment Engine)
+- Crítico Interno (InternalCritic)
+- Interpretação Contínua (ContinuousInterpreter)
+- Memória de Trabalho (WorkingMemorySet)
+- Resiliência (ResilienceModule)
 """
 
 import time
@@ -26,9 +30,13 @@ from agent.core.cognition.reflection import ReflectionEngine
 from agent.core.cognition.communication import CommunicationEngine
 from agent.core.cognition.boredom import BoredomEngine, BoredomLevel, BoredomAction
 from agent.core.cognition.drive import DriveSystem, DriveType, MotivationalState
+from agent.core.cognition.critic import InternalCritic, CritiqueReport, CriticSeverity
+from agent.core.cognition.interpretation import ContinuousInterpreter, RawInput, InterpretationLayer
+from agent.core.cognition.working_set import WorkingMemorySet
 from agent.core.autonomy.mode_manager import ModeManager, Mode
 from agent.core.autonomy.priorities import PriorityManager
 from agent.core.autonomy.triggers import TriggerManager
+from agent.core.autonomy.resilience import ResilienceManager, ErrorContext, ErrorSeverity, safe_execute
 
 # Importa Alignment Engine para verificação ética
 from agent.safety.alignment import AlignmentEngine, AlignmentConfig
@@ -73,6 +81,17 @@ class AgentLoop:
         personality_profile = self.config.get("personality_profile", "balanced")
         self.boredom_engine = BoredomEngine()
         self.drive_system = DriveSystem(personality_profile=personality_profile)
+        
+        # Inicializa módulos cognitivos adicionais
+        self.critic = InternalCritic()
+        self.interpreter = ContinuousInterpreter()
+        self.working_set = WorkingMemorySet(
+            max_items=self.config.get("max_working_items", 20),
+            ttl_seconds=self.config.get("working_set_ttl", 600)
+        )
+        
+        # Inicializa sistema de resiliência
+        self.resilience = ResilienceManager()
         
         self.mode_manager = ModeManager(
             initial_mode=Mode[self.config.get("initial_mode", "WORK").upper()]
@@ -194,6 +213,9 @@ class AgentLoop:
             completed_tasks=0
         )
         
+        # Obtém status de resiliência
+        resilience_status = self.resilience.get_health_status()
+        
         return {
             "state": status.state,
             "mode": status.mode,
@@ -206,7 +228,11 @@ class AgentLoop:
             # Estados motivacionais internos
             "boredom_level": boredom_state.level,
             "boredom_score": boredom_state.score,
-            "motivational_state": motivational_state
+            "motivational_state": motivational_state,
+            # Status de resiliência
+            "resilience_status": resilience_status,
+            # Working set summary
+            "working_set_summary": self.working_set.get_summary()
         }
     
     def _check_triggers(self) -> list:
@@ -288,6 +314,41 @@ class AgentLoop:
         
         return intention.intention_type
     
+    def _interpret_input(self, raw_data: Any, source: str = "environment") -> Dict:
+        """Fase intermediária: Interpretar dados brutos antes do pensamento"""
+        raw_input = RawInput(
+            source=source,
+            content_type="text" if isinstance(raw_data, str) else "event",
+            raw_data=raw_data,
+            context_snapshot={
+                "mode": self.mode_manager.get_mode().value,
+                "state": self.state_manager.get_status().state.value,
+                "has_user_tasks": self.priority_manager.has_user_tasks()
+            }
+        )
+        
+        interpretations = self.interpreter.interpret(raw_input)
+        
+        # Pega a interpretação de maior confiança
+        best_interpretation = interpretations[0] if interpretations else None
+        
+        if best_interpretation:
+            # Registra ambiguidades se houver
+            if best_interpretation.ambiguities:
+                self.logger.warning(f"Ambiguidades detectadas: {best_interpretation.ambiguities}")
+            
+            # Registra tom emocional
+            if best_interpretation.emotional_tone and best_interpretation.emotional_tone != "neutral":
+                self.context_manager.add_thought(
+                    f"[INTERPRETAÇÃO] Tom emocional: {best_interpretation.emotional_tone}"
+                )
+        
+        return {
+            "interpretations": [i.to_dict() for i in interpretations],
+            "best_match": best_interpretation.to_dict() if best_interpretation else None,
+            "ambiguity_alerts": self.interpreter.get_ambiguity_alerts()
+        }
+    
     def _think(self, intention: IntentionType) -> Optional[str]:
         """Fase 6: Pensar sobre a ação (interno, não exposto)."""
         if intention == IntentionType.NO_ACT:
@@ -344,14 +405,86 @@ class AgentLoop:
         return action
     
     def _plan(self, action: str) -> bool:
-        """Fase 7: Planejar ação"""
+        """Fase 7: Planejar ação - agora com validação do crítico interno e working set"""
         if not action:
             return False
         
+        # Usa working set para rascunho mental antes do planejamento final
+        self.working_set.add_idea(
+            content=f"Ação planejada: {action}",
+            tags=["planning", "action"],
+            confidence=0.7
+        )
+        
+        # Cria plano inicial
         plan = self.planner.create_plan(action)
+        
+        # Prepara dados para validação do crítico
+        plan_data = {
+            "id": f"plan_{self.cycle_count}",
+            "goal": action,
+            "actions": [
+                {"id": step.id, "name": step.description, "depends_on": [], "risk_level": "low"}
+                for step in plan.steps
+            ],
+            "required_resources": [],
+            "estimated_time_seconds": len(plan.steps) * 30,
+            "fallback_plan": None
+        }
+        
+        # Contexto para o crítico
+        context = {
+            "available_resources": ["file_system", "web_search", "code_analysis"],
+            "max_execution_time_seconds": 300,
+            "agent_mode": self.mode_manager.get_mode().value
+        }
+        
+        # Valida plano com InternalCritic
+        critique_report = self.critic.evaluate_plan(plan_data, context)
+        
+        # Registra críticas no working set
+        for critique in critique_report.critiques:
+            self.working_set.add_hypothesis(
+                hypothesis=f"Crítica: {critique.issue}",
+                related_to=[plan_data["id"]]
+            )
+            
+            if critique.severity in [CriticSeverity.CRITICAL, CriticSeverity.HIGH]:
+                self.logger.warning(f"⚠️ Crítico: {critique.issue} - {critique.suggestion}")
+                # Adiciona restrição ao working set
+                self.working_set.add_constraint(
+                    constraint=critique.issue,
+                    severity=critique.severity.value
+                )
+        
+        # Se plano não foi aprovado, tenta refinamento
+        if not critique_report.is_approved:
+            critical_issues = critique_report.get_critical_issues()
+            self.logger.warning(f"Plano reprovado pelo crítico: {len(critical_issues)} issues críticos")
+            
+            # Descarta ideias relacionadas ao plano falho
+            for item_id in list(self.working_set.items.keys()):
+                if plan_data["id"] in self.working_set.items[item_id].related_items:
+                    self.working_set.discard_item(item_id, reason="plan_rejected")
+            
+            return False
+        
+        # Plano aprovado - promove itens do working set
+        for item in self.working_set.get_active_items():
+            if item.confidence >= 0.8:
+                self.working_set.promote_item(item.id)
+        
+        # Exporta working set para contexto de planejamento
+        exported = self.working_set.export_for_planning()
+        if exported["promoted_items"] or exported["high_confidence_ideas"]:
+            self.context_manager.add_thought(
+                f"[WORKING SET] {len(exported['promoted_items'])} itens promovidos, "
+                f"{len(exported['high_confidence_ideas'])} ideias de alta confiança"
+            )
+        
         self.context_manager.set_plan([step.description for step in plan.steps])
         
-        self.logger.info(f"Plano criado: {action} ({len(plan.steps)} etapas)")
+        self.logger.info(f"Plano criado e validado: {action} ({len(plan.steps)} etapas)")
         return True
     
     def _check_alignment(self, action_description: str, context: Dict = None) -> bool:
@@ -518,13 +651,32 @@ class AgentLoop:
                 return False
             
         except Exception as e:
+            # Usa ResilienceManager para tratar erro
+            error_ctx = ErrorContext(
+                error_type=type(e).__name__,
+                message=str(e),
+                module="agent_loop",
+                function="_execute",
+                severity=self.resilience.classify_error(e),
+                original_exception=e,
+                context_data={"step_id": step.id if step else None}
+            )
+            
+            # Trata erro com resiliência
+            recovered = self.resilience.handle_error(error_ctx)
+            
             self.planner.fail_step(step.id, str(e))
             self.state_manager.increment_error()
             self.logger.error(f"Erro na execução: {e}")
+            
+            # Se não recuperado, limpa working set
+            if not recovered:
+                self.working_set.reset()
+            
             return False
     
     def _reflect(self):
-        """Fase 9: Refletir sobre ações"""
+        """Fase 9: Refletir sobre ações - agora inclui limpeza do working set e atualização de resiliência"""
         if not self.config.get("enable_reflection", True):
             return
         
@@ -540,13 +692,31 @@ class AgentLoop:
             confidence_before=0.8
         )
         
+        # Registra lições aprendidas no working set antes de limpar
+        for lesson in reflection.lessons_learned:
+            self.working_set.add_idea(
+                content=f"Lição: {lesson}",
+                tags=["lesson_learned", "reflection"],
+                confidence=0.9
+            )
+        
+        # Limpa working set após ciclo completo (fim do ciclo cognitivo)
+        self.working_set.clear_discarded()
+        
+        # Reseta saúde da resiliência após sucesso
+        self.resilience.reset_health()
+        
         self.logger.info(f"Reflexão criada: {len(reflection.lessons_learned)} lições aprendidas")
     
     def _register(self):
-        """Fase 10: Registrar ciclo"""
+        """Fase 10: Registrar ciclo - agora inclui estatísticas dos módulos integrados"""
         self.cycle_count += 1
         self.state_manager.increment_cycle()
         self.state_manager.update_last_action()
+        
+        # Limpa interpretações antigas periodicamente
+        if self.cycle_count % 50 == 0:
+            self.interpreter.clear_history()
     
     def run_cycle(self) -> Dict:
         """Executa um ciclo completo"""
@@ -641,7 +811,7 @@ class AgentLoop:
         self.logger.info("Loop parado")
     
     def get_status(self) -> Dict:
-        """Retorna status completo do agente"""
+        """Retorna status completo do agente incluindo todos os módulos cognitivos"""
         return {
             "running": self.running,
             "cycle_count": self.cycle_count,
@@ -655,5 +825,18 @@ class AgentLoop:
             "communication_stats": {
                 "messages_in_history": len(self.communication_engine.conversation_history),
                 "last_response_tone": self.communication_engine.current_response.tone if self.communication_engine.current_response else None
-            }
+            },
+            # Estatísticas dos módulos cognitivos integrados
+            "boredom_stats": {
+                "current_level": self.boredom_engine._current_level.value if hasattr(self.boredom_engine, '_current_level') else None,
+                "current_score": self.boredom_engine._current_score if hasattr(self.boredom_engine, '_current_score') else None
+            },
+            "drive_stats": self.drive_system.get_profile() if hasattr(self.drive_system, 'get_profile') else {},
+            "critic_stats": self.critic.get_stats() if hasattr(self.critic, 'get_stats') else {},
+            "working_set_stats": self.working_set.get_summary(),
+            "interpreter_stats": {
+                "history_size": len(self.interpreter.interpretation_history),
+                "context_memory_size": len(self.interpreter.context_memory)
+            },
+            "resilience_stats": self.resilience.get_health_status()
         }
