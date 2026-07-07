@@ -16,16 +16,16 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 
 # Importa componentes do núcleo
-from core.state.agent_state import StateManager, AgentState, AgentMode, Task
-from core.state.context_manager import ContextManager
-from core.cognition.intention import IntentionEngine, IntentionType
-from core.cognition.thinking import ThinkingEngine
-from core.cognition.planner import Planner
-from core.cognition.reflection import ReflectionEngine
-from core.cognition.communication import CommunicationEngine
-from core.autonomy.mode_manager import ModeManager, Mode
-from core.autonomy.priorities import PriorityManager
-from core.autonomy.triggers import TriggerManager
+from agent.core.state.agent_state import StateManager, AgentState, AgentMode, Task
+from agent.core.state.context_manager import ContextManager
+from agent.core.cognition.intention import IntentionEngine, IntentionType
+from agent.core.cognition.thinking import ThinkingEngine
+from agent.core.cognition.planner import Planner
+from agent.core.cognition.reflection import ReflectionEngine
+from agent.core.cognition.communication import CommunicationEngine
+from agent.core.autonomy.mode_manager import ModeManager, Mode
+from agent.core.autonomy.priorities import PriorityManager
+from agent.core.autonomy.triggers import TriggerManager
 
 
 class AgentLoop:
@@ -253,7 +253,7 @@ class AgentLoop:
         return True
     
     def _execute(self) -> bool:
-        """Fase 8: Executar ação e gerar resposta ao usuário"""
+        """Fase 8: Executar ação e gerar resposta ao usuário usando executor real"""
         plan = self.planner.get_current_plan()
         if not plan:
             return False
@@ -265,29 +265,66 @@ class AgentLoop:
         self.state_manager.set_state(AgentState.EXECUTING)
         
         try:
-            # Simulação de execução (será implementado com ferramentas reais)
-            result = f"Executado: {step.description}"
+            # Usa ActionExecutor real em vez de simulação
+            from core.loop.action_executor import get_executor
             
-            self.planner.complete_step(step.id, result)
-            self.context_manager.add_item(result, "assistant", {"step": step.id})
+            executor = get_executor()
             
-            # Gera resposta ao usuário baseada na execução
-            context = {
-                "mode": self.mode_manager.get_mode().value,
-                "state": AgentState.EXECUTING.value
+            # Mapeia intenção para tipo de ação
+            action_type_map = {
+                "Executar tarefa pendente": "file_operation",
+                "Explorar contexto em busca de aprendizado": "web_search",
+                "Organizar memória e extrair padrões": "log_insight",
+                "Analisar ações recentes": "code_analysis"
             }
-            response = self.communication_engine.generate_response(
-                thought_conclusion=f"Tarefa concluída: {step.description}",
-                action_taken=step.description,
-                context=context
+            
+            action_type = action_type_map.get(plan.intention, "generic")
+            
+            # Executa ação real
+            result = executor.execute_action(
+                action_type=action_type,
+                description=step.description,
+                context={
+                    "mode": self.mode_manager.get_mode().value,
+                    "state": AgentState.EXECUTING.value,
+                    "plan_intention": plan.intention
+                },
+                plan_step={"id": step.id, "description": step.description}
             )
             
-            # Log da resposta (em produção, isso seria exibido ao usuário)
-            if response.content:
-                self.logger.info(f"Resposta ao usuário: {response.content}")
-            
-            self.logger.info(f"Etapa executada: {step.description}")
-            return True
+            if result.success:
+                self.planner.complete_step(step.id, str(result.result))
+                
+                # Adiciona resultado ao contexto
+                self.context_manager.add_item(
+                    f"{result.description}: {str(result.result)[:500]}",
+                    "assistant",
+                    {"step": step.id, "tool_used": result.tool_used, "tokens_used": result.tokens_used}
+                )
+                
+                # Gera resposta ao usuário baseada na execução real
+                context = {
+                    "mode": self.mode_manager.get_mode().value,
+                    "state": AgentState.EXECUTING.value
+                }
+                response = self.communication_engine.generate_response(
+                    thought_conclusion=f"Tarefa concluída: {result.description}",
+                    action_taken=result.description,
+                    context=context
+                )
+                
+                # Log da resposta
+                if response.content:
+                    self.logger.info(f"Resposta ao usuário: {response.content}")
+                
+                self.logger.info(f"Etapa executada com sucesso: {step.description} (ferramenta: {result.tool_used})")
+                return True
+            else:
+                # Falha na execução
+                self.planner.fail_step(step.id, result.error or "Erro desconhecido")
+                self.state_manager.increment_error()
+                self.logger.error(f"Falha na execução: {result.error}")
+                return False
             
         except Exception as e:
             self.planner.fail_step(step.id, str(e))

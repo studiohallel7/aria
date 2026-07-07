@@ -52,17 +52,20 @@ accounts:
   opencode:
     - id: oc_account_1
       name: "OpenCode Primary"
-      api_key_env: OPENCODE_API_KEY_1
+      api_key_env: OPENCODE_API_KEY
       enabled: true
-      monthly_budget: 40.00
-      current_usage: 0.00
+      monthly_budget: 0.0
+      current_usage: 0.0
       reset_date: "2025-02-01"
       priority: 1
+      quota:
+        daily_limit_usd: 0.0
+        current_daily_spent: 0.0
 
 # Configurações de rotação
 rotation:
-  # Estratégia de rotação: round_robin, least_used, cost_optimized
-  strategy: cost_optimized
+  # Estratégia de rotação: quota_based, round_robin, latency_based, priority_based
+  strategy: priority_based
   
   # Intervalo mínimo entre trocas (segundos)
   min_rotation_interval: 300

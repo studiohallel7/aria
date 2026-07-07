@@ -11,17 +11,19 @@ from ..client import LLMProvider, LLMMessage, LLMResponse
 
 
 class OpencodeProvider(LLMProvider):
-    """Opencode LLM provider."""
+    """Opencode LLM provider - Suporte para DeepSeek V4 Flash Free e GPT-5.5."""
     
     name = "opencode"
     
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
-        self.api_key = api_key or os.getenv("OPENCODE_API_KEY")
-        self.base_url = base_url or "https://api.opencode.ai/v1"
+        self.api_key = api_key or os.getenv("OPENCODE_API_KEY", "")
+        # URL correta conforme documentação
+        self.base_url = base_url or "https://opencode.ai/zen/v1/chat/completions"
         
-        # Model metadata
+        # Model metadata - modelos disponíveis no OpenCode
         self._models = {
-            "opencode-v1": {"purpose": "backup", "priority": 1},
+            "deepseek-v4-flash-free": {"purpose": "code", "priority": 1},
+            "gpt-5.5": {"purpose": "general", "priority": 2},
         }
     
     def chat_completion(
@@ -103,13 +105,9 @@ class OpencodeProvider(LLMProvider):
         ]
     
     def _estimate_cost(self, model: str, tokens: int) -> float:
-        """Estimate cost based on model and token count."""
-        pricing = {
-            "opencode-v1": {"input": 0.001, "output": 0.002},
-        }
+        """Estimate cost based on model and token count.
         
-        rates = pricing.get(model, {"input": 0.001, "output": 0.002})
-        input_tokens = int(tokens * 0.6)
-        output_tokens = int(tokens * 0.4)
-        
-        return (input_tokens / 1000 * rates["input"]) + (output_tokens / 1000 * rates["output"])
+        OpenCode oferece modelos gratuitos, então o custo é zero.
+        """
+        # Modelos OpenCode são gratuitos
+        return 0.0
