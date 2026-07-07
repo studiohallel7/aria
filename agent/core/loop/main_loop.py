@@ -24,6 +24,8 @@ from agent.core.cognition.thinking import ThinkingEngine
 from agent.core.cognition.planner import Planner
 from agent.core.cognition.reflection import ReflectionEngine
 from agent.core.cognition.communication import CommunicationEngine
+from agent.core.cognition.boredom import BoredomEngine, BoredomLevel, BoredomAction
+from agent.core.cognition.drive import DriveSystem, DriveType, MotivationalState
 from agent.core.autonomy.mode_manager import ModeManager, Mode
 from agent.core.autonomy.priorities import PriorityManager
 from agent.core.autonomy.triggers import TriggerManager
@@ -66,6 +68,12 @@ class AgentLoop:
         self.planner = Planner()
         self.reflection_engine = ReflectionEngine()
         self.communication_engine = CommunicationEngine()
+        
+        # Inicializa sistemas de motivação interna (Boredom e Drives)
+        personality_profile = self.config.get("personality_profile", "balanced")
+        self.boredom_engine = BoredomEngine()
+        self.drive_system = DriveSystem(personality_profile=personality_profile)
+        
         self.mode_manager = ModeManager(
             initial_mode=Mode[self.config.get("initial_mode", "WORK").upper()]
         )
@@ -167,15 +175,38 @@ class AgentLoop:
         status = self.state_manager.get_status()
         idle_time = self.state_manager.get_idle_time()
         
+        # Atualiza sistemas de motivação interna (Boredom e Drives)
+        is_executing = status.state == AgentState.EXECUTING
+        has_user_tasks = self.priority_manager.has_user_tasks()
+        
+        # Update Boredom Engine
+        boredom_state = self.boredom_engine.update(
+            has_user_tasks=has_user_tasks,
+            is_executing=is_executing,
+            recent_discoveries=0  # Pode ser incrementado com descobertas reais
+        )
+        
+        # Update Drive System
+        motivational_state = self.drive_system.update(
+            recent_actions=[],
+            environment_changes=0,
+            user_interactions=1 if has_user_tasks else 0,
+            completed_tasks=0
+        )
+        
         return {
             "state": status.state,
             "mode": status.mode,
             "idle_time": idle_time,
-            "has_user_tasks": self.priority_manager.has_user_tasks(),
+            "has_user_tasks": has_user_tasks,
             "cycle_count": self.cycle_count,
             "errors_in_cycle": status.errors_in_cycle,
             "llm_calls_in_cycle": status.llm_calls_in_cycle,
-            "context_summary": self.context_manager.get_summary()
+            "context_summary": self.context_manager.get_summary(),
+            # Estados motivacionais internos
+            "boredom_level": boredom_state.level,
+            "boredom_score": boredom_state.score,
+            "motivational_state": motivational_state
         }
     
     def _check_triggers(self) -> list:
@@ -189,9 +220,50 @@ class AgentLoop:
         return active_triggers
     
     def _determine_intention(self, observation: Dict) -> IntentionType:
-        """Fase 5: Definir intenção"""
+        """Fase 5: Definir intenção - agora influenciada por tédio e drives internos"""
         mode_value = observation["mode"].value if hasattr(observation["mode"], 'value') else observation["mode"]
         
+        # Obtém estados motivacionais
+        boredom_level = observation.get("boredom_level")
+        boredom_score = observation.get("boredom_score", 0.0)
+        motivational_state = observation.get("motivational_state")
+        
+        # Verifica se sistemas de motivação sugerem ação autônoma
+        suggested_boredom_action = self.boredom_engine.get_suggested_action()
+        drive_suggestions = self.drive_system.get_action_suggestions()
+        
+        # Se tédio alto e sem tarefas do usuário, considera ação autônoma
+        if not observation["has_user_tasks"] and boredom_score > 60:
+            # Tédio significativo pode gerar intenção de explorar ou aprender
+            if suggested_boredom_action == BoredomAction.EXPLORE:
+                self.logger.info(f"🎯 Tédio alto ({boredom_score:.1f}) sugere EXPLORAR")
+                # Registra no contexto
+                self.context_manager.add_thought(
+                    f"[MOTIVAÇÃO INTERNA] Tédio: {boredom_score:.1f} - Sugerindo exploração autônoma"
+                )
+            elif suggested_boredom_action == BoredomAction.LEARN:
+                self.logger.info(f"📚 Tédio alto ({boredom_score:.1f}) sugere APRENDER")
+                self.context_manager.add_thought(
+                    f"[MOTIVAÇÃO INTERNA] Tédio: {boredom_score:.1f} - Sugerindo aprendizado"
+                )
+            elif suggested_boredom_action == BoredomAction.ASK_USER:
+                # Gera mensagem de tédio
+                boredom_msg = self.boredom_engine.generate_boredom_message()
+                self.logger.info(f"💬 {boredom_msg}")
+                self.context_manager.add_thought(f"[MOTIVAÇÃO INTERNA] {boredom_msg}")
+        
+        # Drives dominantes podem influenciar intenção
+        if motivational_state and motivational_state.dominant_drive:
+            dominant = motivational_state.dominant_drive
+            tension = motivational_state.overall_tension
+            
+            if tension > 40 and not observation["has_user_tasks"]:
+                self.logger.debug(f"🔥 Drive dominante: {dominant.value} (tensão: {tension:.1f})")
+                self.context_manager.add_thought(
+                    f"[DRIVE INTERNO] {dominant.value} com tensão {tension:.1f}"
+                )
+        
+        # Avalia intenção normal (pode ser sobreescrita por motivação interna)
         intention = self.intention_engine.evaluate(
             has_user_tasks=observation["has_user_tasks"],
             idle_time=observation["idle_time"],
@@ -201,6 +273,15 @@ class AgentLoop:
             llm_calls_recent=observation["llm_calls_in_cycle"],
             max_llm_calls=self.config.get("max_llm_calls_per_cycle", 3)
         )
+        
+        # Se intenção for NO_ACT/WAIT mas há motivação interna forte, muda para EXPLORE/LEARN
+        if intention.intention_type in [IntentionType.NO_ACT, IntentionType.WAIT]:
+            if boredom_score > 70 or (motivational_state and motivational_state.overall_tension > 50):
+                # Motivação interna forte supera inatividade
+                if suggested_boredom_action in [BoredomAction.EXPLORE, BoredomAction.LEARN]:
+                    intention.intention_type = IntentionType.EXPLORE
+                    intention.reason = f"Motivação interna: {suggested_boredom_action.value} (tédio: {boredom_score:.1f})"
+                    self.logger.info(f"🔄 Intenção alterada para EXPLORE por motivação interna")
         
         self.context_manager.set_intention(intention.intention_type.value)
         self.logger.info(f"Intenção determinada: {intention.intention_type.value} - {intention.reason}")
@@ -382,6 +463,35 @@ class AgentLoop:
                     "assistant",
                     {"step": step.id, "tool_used": result.tool_used, "tokens_used": result.tokens_used}
                 )
+                
+                # REGISTRA ESTIMULAÇÃO nos sistemas de motivação (reduz tédio e satisfaz drives)
+                action_description = result.description.lower()
+                
+                # Registra no Boredom Engine
+                boredom_impact = 15.0  # Redução padrão do tédio
+                if "explor" in action_description:
+                    boredom_impact = 20.0
+                elif "aprend" in action_description or "estud" in action_description:
+                    boredom_impact = 18.0
+                
+                self.boredom_engine.record_stimulation(
+                    event_type="self_initiated" if plan.intention == "Explorar contexto em busca de aprendizado" else "task_completion",
+                    description=result.description,
+                    impact=boredom_impact
+                )
+                
+                # Satisfaz drives relevantes no Drive System
+                if "organiz" in action_description:
+                    self.drive_system.satisfy_drive(DriveType.ORDER, 15.0)
+                if "otimiz" in action_description:
+                    self.drive_system.satisfy_drive(DriveType.EFFICIENCY, 15.0)
+                if "explor" in action_description:
+                    self.drive_system.satisfy_drive(DriveType.CURIOSITY, 18.0)
+                if "aprend" in action_description or "estud" in action_description:
+                    self.drive_system.satisfy_drive(DriveType.LEARNING, 18.0)
+                if "tarefa" in action_description or "conclu" in action_description:
+                    self.drive_system.satisfy_drive(DriveType.COMPLETION, 20.0)
+                    self.drive_system.satisfy_drive(DriveType.PURPOSE, 15.0)
                 
                 # Gera resposta ao usuário baseada na execução real
                 context = {
