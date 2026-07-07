@@ -1,62 +1,34 @@
 ```
-# Python
+# Compiled Python files
+*.pyc
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-.venv.bak/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-*.pot
-*.pyc
-*.pyo
-.pytest_cache/
-.mypy_cache/
-
-# Environment
-.env
-.env.local
-.env.*
 
 # Dependencies
-node_modules/
-target/
-.gradle/
-build/
-dist/
-*.egg-info/
-.eggs/
-.installed.cfg
-develop-eggs/
-parts/
-sdist/
-var/
-wheels/
-*.whl
-lib/
-lib64/
-share/python-wheels/
+.venv/
+venv/
+.env
+.env.local
+*.env.*
 
-# IDE
+# Logs
+*.log
+
+# Coverage reports
+.coverage
+coverage/
+htmlcov/
+
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 *.tmp
 
-# OS
-.DS_Store
-Thumbs.db
+# Build artifacts
+build/
+dist/
+target/
+.mypy_cache/
+.pytest_cache/
 ```

@@ -9,28 +9,32 @@
 - [x] Gerenciamento de contas com rotação
 - [x] Comandos básicos de gerenciamento
 
-## 🚧 Fase 2: Núcleo Cognitivo (Em Progresso)
+## ✅ Fase 2: Núcleo Cognitivo (Completo)
 
 ### Loop Principal
-- [ ] Implementar `core/loop/main_loop.py`
-- [ ] Sistema de gatilhos múltiplos
-- [ ] Controle de estado (idle, thinking, executing, exploring)
-- [ ] Prioridade de tarefas (usuário > interno)
+- [x] `core/loop/main_loop.py` - Loop principal implementado
+- [x] Sistema de gatilhos múltiplos
+- [x] Controle de estado (idle, thinking, executing, exploring)
+- [x] Prioridade de tarefas (usuário > interno)
 
 ### Cognição
-- [ ] `core/cognition/thinking.py` - Pensamento interno
-- [ ] `core/cognition/planner.py` - Planejamento em etapas
-- [ ] `core/cognition/reflection.py` - Reflexão pós-ação
-- [ ] `core/cognition/intention.py` - Sistema de intenção
+- [x] `core/cognition/thinking.py` - Pensamento interno
+- [x] `core/cognition/planner.py` - Planejamento em etapas
+- [x] `core/cognition/reflection.py` - Reflexão pós-ação
+- [x] `core/cognition/intention.py` - Sistema de intenção
 
 ### Estado e Contexto
-- [ ] `core/state/agent_state.py` - Estado persistente
-- [ ] `core/state/context_manager.py` - Gerenciamento de contexto
+- [x] `core/state/agent_state.py` - Estado persistente
+- [x] `core/state/context_manager.py` - Gerenciamento de contexto
 
 ### Autonomia
-- [ ] `core/autonomy/mode_manager.py` - Trabalho vs Livre
-- [ ] `core/autonomy/priorities.py` - Sistema de prioridades
-- [ ] `core/autonomy/triggers.py` - Gatilhos do loop
+- [x] `core/autonomy/mode_manager.py` - Trabalho vs Livre
+- [x] `core/autonomy/priorities.py` - Sistema de prioridades
+- [x] `core/autonomy/triggers.py` - Gatilhos do loop
+
+### Testes
+- [x] Validação de integração dos componentes
+- [x] Teste de ciclo completo (observe → intention → think → plan → execute → reflect)
 
 ## 🔧 Fase 3: Infraestrutura LLM
 
