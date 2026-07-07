@@ -1,40 +1,50 @@
 ```gitignore
-# Compiled Python files
-*.pyc
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
 
-# Dependencies
-.venv/
+# Virtual environments
 venv/
+.venv/
 env/
-pip-log.txt
-pip-selfcheck.json
+.ENV/
 
-# Logs
-*.log
-
-# Environment variables
-.env
-.env.local
-*.env.*
-
-# Coverage reports
+# Testing
 .coverage
 coverage/
 htmlcov/
+.pytest_cache/
+.hypothesis/
 
-# IDE files
+# Linting
+.mypy_cache/
+.flake8cache
+.isort-cache/
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.tmp
 
-# OS generated files
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# OS
 .DS_Store
 Thumbs.db
-
-# Build outputs
-build/
-dist/
-*.egg-info/
 ```
