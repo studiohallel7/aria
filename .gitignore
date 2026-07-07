@@ -1,1 +1,18 @@
-Nothing should be ignored based on the provided file changes, as they only include Python source files (.py) which are legitimate source code files that should be tracked in version control.
+```
+# Python compiled files
+*.pyc
+__pycache__/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+```
