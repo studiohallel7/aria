@@ -137,7 +137,7 @@ class CommunicationEngine:
         mode: str
     ) -> str:
         """
-        Constrói a resposta em linguagem natural.
+        Constrói a resposta em linguagem natural usando LLM REAL.
         
         Estrutura típica:
         1. Reconhecimento (se aplicável)
@@ -145,6 +145,45 @@ class CommunicationEngine:
         3. Ação tomada ou recomendada
         4. Próximo passo (opcional)
         """
+        from agent.infra.llm.client import LLMMessage
+        from agent.infra.llm.router import LLMRouter
+        
+        # Tenta usar LLM real para gerar resposta natural
+        router = LLMRouter()
+        
+        system_prompt = f"""Você é a interface de comunicação de um agente autônomo.
+Sua tarefa é transformar conclusões técnicas em respostas naturais e conversacionais em português.
+Modo atual: {mode}
+- Se 'work': seja direto, profissional e focado na ação
+- Se 'free': seja mais explicativo e amigável
+
+Não mencione processos internos, pensamentos ou steps. Apenas responda naturalmente."""
+
+        user_prompt = f"""Conclusão interna: {conclusion}
+Ação executada: {action if action else 'Nenhuma'}
+
+Gere uma resposta natural e concisa para o usuário."""
+        
+        try:
+            messages = [
+                LLMMessage(role="system", content=system_prompt),
+                LLMMessage(role="user", content=user_prompt)
+            ]
+            
+            # Tenta usar LLM real (método correto: chat_completion)
+            router = LLMRouter()
+            response = router.chat_completion(
+                messages=messages,
+                purpose="resposta_usuario"
+            )
+            
+            if response and not response.error and response.content.strip():
+                return response.content.strip()
+                
+        except Exception as e:
+            print(f"[WARNING] LLM indisponível para comunicação, usando fallback: {e}")
+        
+        # FALLBACK: Respostas pré-moldadas se LLM não estiver disponível
         parts = []
         
         # Se há ação, menciona primeiro
