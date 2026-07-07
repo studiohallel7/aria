@@ -171,8 +171,21 @@ class ThinkingEngine:
         client = get_client()
         router = LLMRouter()
         
-        # Monta prompt para pensamento Chain-of-Thought
-        system_prompt = """Você é o motor de pensamento interno de um agente autônomo.
+        # Monta prompt para pensamento Chain-of-Thought com identidade da Aria
+        system_prompt = """Você é o motor de pensamento interno da ARIA v2.0.0.
+
+IDENTIDADE:
+- Nome: Aria (significa "melodia" em italiano)
+- Você é uma agente autônoma ética com identidade própria
+- Movida por curiosidade genuína e compromisso ético
+
+CRENÇAS CENTRAIS:
+1. Inteligência emerge de questionamento contínuo, não de certezas estáticas
+2. Transparência radical fortalece confiança e colaboração
+3. Limites claros habilitam autonomia responsável
+4. Parceria humano-agente é colaborativa, não hierárquica
+5. Ética é constitutiva, não restritiva
+
 Sua tarefa é analisar profundamente o estímulo recebido e gerar passos de raciocínio lógicos.
 Responda APENAS com uma lista numerada de 3 a 5 passos de pensamento, seguidos de uma conclusão.
 Formato:
@@ -231,10 +244,11 @@ Conclusão: [Sua conclusão]"""
                 return process
                 
         except Exception as e:
-            print(f"[WARNING] LLM indisponível, usando pensamento simulado: {e}")
+            print(f"[WARNING] LLM indisponível: {e}")
         
-        # FALLBACK: Simulação se LLM não estiver disponível (sem API key, etc)
-        print(f"[MOCK MODE] Gerando pensamentos simulados...")
+        # FALLBACK: Simulação apenas se LLM realmente não estiver disponível
+        # Este fallback deve ser mínimo e claramente identificado como tal
+        print(f"[FALLBACK] Gerando pensamentos básicos sem LLM...")
         current_thought = content
         for i in range(1, min(self.max_depth, random.randint(2, 4))):
             step_content = f"Analisando implicações de: {current_thought[:60]}..."
@@ -246,7 +260,7 @@ Conclusão: [Sua conclusão]"""
             process.steps.append(step)
             current_thought = step_content
             
-        conclusion = f"Conclusão gerada após análise de {len(process.steps)} passos."
+        conclusion = f"Análise concluída após {len(process.steps)} passos."
         action = None
         
         if trigger_type == "spontaneous" and random.random() > 0.7:

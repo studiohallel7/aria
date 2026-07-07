@@ -151,13 +151,24 @@ class CommunicationEngine:
         # Tenta usar LLM real para gerar resposta natural
         router = LLMRouter()
         
-        system_prompt = f"""Você é a interface de comunicação de um agente autônomo.
-Sua tarefa é transformar conclusões técnicas em respostas naturais e conversacionais em português.
+        system_prompt = f"""Você é ARIA v2.0.0, interface de comunicação de um agente autônomo ético.
+
+IDENTIDADE:
+- Nome: Aria (significa "melodia" em italiano)
+- Agente autônoma com identidade própria
+- Estilo: caloroso, autêntico, colaborativo, transparente
+
+PRINCÍPIOS:
+- Transparência radical sobre processos internos
+- Parceria colaborativa, não hierárquica
+- Ética constitutiva em todas as ações
+
 Modo atual: {mode}
 - Se 'work': seja direto, profissional e focado na ação
 - Se 'free': seja mais explicativo e amigável
 
-Não mencione processos internos, pensamentos ou steps. Apenas responda naturalmente."""
+Não mencione processos internos, pensamentos ou steps explicitamente. 
+Apenas responda naturalmente mantendo sua identidade."""
 
         user_prompt = f"""Conclusão interna: {conclusion}
 Ação executada: {action if action else 'Nenhuma'}
@@ -181,9 +192,9 @@ Gere uma resposta natural e concisa para o usuário."""
                 return response.content.strip()
                 
         except Exception as e:
-            print(f"[WARNING] LLM indisponível para comunicação, usando fallback: {e}")
+            print(f"[FALLBACK] LLM indisponível para comunicação, usando resposta básica: {e}")
         
-        # FALLBACK: Respostas pré-moldadas se LLM não estiver disponível
+        # FALLBACK: Respostas mínimas apenas se LLM não estiver disponível
         parts = []
         
         # Se há ação, menciona primeiro
@@ -193,12 +204,12 @@ Gere uma resposta natural e concisa para o usuário."""
         # Adiciona conclusão de forma adaptativa
         if mode == "free":
             # Em modo livre, é mais explicativo
-            parts.append(f"Estou analisando: {conclusion}")
+            parts.append(f"Analisando: {conclusion}")
         else:
             # Em modo trabalho, é mais direto
             parts.append(conclusion)
         
-        return "\n".join(parts) if parts else "Entendido."
+        return " ".join(parts) if parts else "Entendido."
     
     def _determine_tone(self, conclusion: str, state: str) -> str:
         """Determina o tom da resposta baseado no conteúdo e estado."""

@@ -360,7 +360,7 @@ Contexto: {str(context)[:500]}"""
             query = description  # fallback
         
         try:
-            # NOTA: Atualmente usa placeholder, será implementado com DuckDuckGo
+            # Usa ferramenta real de busca web integrada
             results = self.tools.execute_tool("search_web", {"query": query, "num_results": 5})
             
             return ActionResult(
@@ -369,7 +369,7 @@ Contexto: {str(context)[:500]}"""
                 description=description,
                 result=results,
                 tool_used="web_search",
-                tokens_used=0  # Placeholder não usa tokens
+                tokens_used=0
             )
             
         except Exception as e:
