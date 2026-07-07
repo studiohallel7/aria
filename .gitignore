@@ -1,46 +1,14 @@
-```
-# Python
+```gitignore
+# Compiled Python files
+*.pyc
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
 
-# Virtual environments
+# Dependencies
+.venv/
 venv/
 env/
-ENV/
-.venv/
-.env/
-
-# Testing
-.coverage
-coverage/
-htmlcov/
-.nosetests
-.pytest_cache/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
+pip-log.txt
+pip-selfcheck.json
 
 # Logs
 *.log
@@ -50,10 +18,23 @@ htmlcov/
 .env.local
 *.env.*
 
-# OS
+# Coverage reports
+.coverage
+coverage/
+htmlcov/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
 .DS_Store
 Thumbs.db
 
-# Coverage
-.coverage*
+# Build outputs
+build/
+dist/
+*.egg-info/
 ```
