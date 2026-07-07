@@ -148,7 +148,7 @@ class LLMTools:
         
         self.register_tool(
             name="search_web",
-            description="Search the web for information (placeholder)",
+            description="Search the web using DuckDuckGo (free, no API key). Returns titles, URLs and snippets.",
             parameters={
                 "type": "object",
                 "properties": {
@@ -164,6 +164,42 @@ class LLMTools:
                 "required": ["query"]
             },
             function=self.web_tools.search
+        )
+        
+        self.register_tool(
+            name="search_news",
+            description="Search for recent news articles using Google News RSS",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "News search query"
+                    },
+                    "num_results": {
+                        "type": "integer",
+                        "description": "Number of news results (default: 3)"
+                    }
+                },
+                "required": ["query"]
+            },
+            function=self.web_tools.search_news
+        )
+        
+        self.register_tool(
+            name="get_weather",
+            description="Get current weather information for a location using wttr.in (free)",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City or location name"
+                    }
+                },
+                "required": ["location"]
+            },
+            function=self.web_tools.get_weather
         )
     
     def register_tool(self, name: str, description: str, 

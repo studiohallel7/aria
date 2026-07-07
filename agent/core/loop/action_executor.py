@@ -11,6 +11,7 @@ from datetime import datetime
 from agent.infra.tools.llm_tools import get_llm_tools, LLMTools
 from agent.infra.llm.client import LLMMessage
 from agent.infra.llm.router import LLMRouter
+from agent.safety.identity_core import get_identity_core, TrustLevel
 
 logger = logging.getLogger("agent_executor")
 
@@ -49,12 +50,22 @@ class ActionExecutor:
     2. Usar ferramentas reais (filesystem, shell, web)
     3. Chamar LLM para decisões complexas
     4. Retornar resultados estruturados
+    5. Verificar identidade antes de ações sensíveis
     """
     
     def __init__(self, config: Dict = None):
         self.config = config or {}
         self.tools = get_llm_tools()
         self.llm_router = LLMRouter()
+        
+        # Inicializa IdentityCore para verificação de vínculos
+        self.identity_core = get_identity_core(
+            agent_id=self.config.get("agent_id", "agent_default"),
+            config={
+                "auto_web_research": self.config.get("auto_web_research", True),
+                "min_trust_for_sensitive_actions": TrustLevel.VERIFIED
+            }
+        )
         
         # Mapeamento de tipos de ação para métodos
         self.action_handlers = {
@@ -71,7 +82,7 @@ class ActionExecutor:
         # Histórico de execuções
         self.execution_history: List[ActionResult] = []
         
-        logger.info("ActionExecutor inicializado com ferramentas reais")
+        logger.info("ActionExecutor inicializado com ferramentas reais e IdentityCore")
     
     def execute_action(self, action_type: str, description: str, 
                       context: Dict = None, plan_step: Dict = None) -> ActionResult:
@@ -469,7 +480,17 @@ Seja conciso mas completo."""
     
     def _handle_user_response(self, description: str, context: Dict,
                              plan_step: Dict = None) -> ActionResult:
-        """Gera resposta para usuário"""
+        """Gera resposta para usuário com verificação de identidade"""
+        
+        # Verifica identidade do solicitante se houver entity_id no contexto
+        entity_id = context.get("entity_id")
+        if entity_id:
+            trust_level = self.identity_core.get_entity_trust_level(entity_id)
+            
+            # Se não for confiável e a ação for sensível, alerta
+            if not self.identity_core.is_trusted_for_action(entity_id, "normal"):
+                logger.warning(f"Entidade {entity_id} com confiança baixa ({trust_level.name}) tentando interação")
+                # Pode adicionar aviso na resposta ou bloquear
         
         # Usa LLM para formular resposta natural
         system_prompt = """Você é um assistente prestativo e claro.
@@ -501,6 +522,10 @@ Seja conciso mas informativo."""
                 response_content = f"Ação concluída: {description}"
             else:
                 response_content = response.content
+            
+            # Atualiza interação se entity_id fornecido
+            if entity_id:
+                self.identity_core.update_interaction(entity_id, context)
             
             return ActionResult(
                 success=True,
