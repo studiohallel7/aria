@@ -1,0 +1,60 @@
+# Configurações principais do agente autônomo
+
+agent:
+  name: "Autonomous Agent"
+  version: "0.1.0"
+  mode: "trabalho"  # trabalho | livre
+  cycle_interval_seconds: 5
+  max_cycles_before_rest: 100
+
+cognition:
+  max_thought_depth: 5
+  max_tool_calls_per_cycle: 3
+  reasoning_timeout_seconds: 30
+  curiosity_threshold: 0.3  # 0-1, probabilidade de curiosidade em modo livre
+
+memory:
+  short_term_max_items: 50
+  long_term_enabled: true
+  persistence_path: "./data/agent/memory"
+  embedding_model: "text-embedding-3-small"
+
+api_management:
+  thresholds:
+    warning: 70
+    critical: 85
+    emergency: 95
+  rotation_cooldown_seconds: 300
+  default_fallback_provider: "openrouter"
+
+safety:
+  auto_execute_green: true
+  require_confirmation_yellow: true
+  require_confirmation_red: true
+  allowed_shell_commands:
+    - "ls"
+    - "cat"
+    - "grep"
+    - "find"
+    - "echo"
+    - "pwd"
+    - "head"
+    - "tail"
+  blocked_shell_commands:
+    - "rm -rf"
+    - "mkfs"
+    - "dd"
+    - "chmod -R 777"
+  max_file_size_mb: 100
+  network_enabled: true
+
+monitoring:
+  telemetry_enabled: true
+  log_level: "INFO"
+  log_path: "./data/agent/logs"
+  metrics_interval_seconds: 60
+
+resources:
+  max_cpu_percent: 80
+  max_memory_mb: 2048
+  check_interval_seconds: 30

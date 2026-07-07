@@ -1,0 +1,90 @@
+# Configuração de providers LLM
+
+providers:
+  openai:
+    enabled: true
+    base_url: "https://api.openai.com/v1"
+    models:
+      - name: "gpt-4o"
+        purpose: "raciocinio_complexo"
+        cost_per_1k_input: 0.005
+        cost_per_1k_output: 0.015
+        max_tokens: 128000
+        capabilities:
+          - text
+          - vision
+          - function_calling
+        priority: 1
+        
+      - name: "gpt-4o-mini"
+        purpose: "tarefas_rapidas"
+        cost_per_1k_input: 0.00015
+        cost_per_1k_output: 0.0006
+        max_tokens: 128000
+        capabilities:
+          - text
+          - function_calling
+        priority: 2
+        
+      - name: "o1-preview"
+        purpose: "raciocinio_profundo"
+        cost_per_1k_input: 0.015
+        cost_per_1k_output: 0.06
+        max_tokens: 32000
+        capabilities:
+          - text
+          - reasoning
+        priority: 3
+
+  openrouter:
+    enabled: true
+    base_url: "https://openrouter.ai/api/v1"
+    models:
+      - name: "anthropic/claude-3.5-sonnet"
+        purpose: "analise_codigo"
+        cost_per_1k_input: 0.003
+        cost_per_1k_output: 0.015
+        max_tokens: 200000
+        capabilities:
+          - text
+          - code
+        priority: 1
+        
+      - name: "google/gemini-pro-1.5"
+        purpose: "contexto_longo"
+        cost_per_1k_input: 0.00025
+        cost_per_1k_output: 0.0005
+        max_tokens: 1000000
+        capabilities:
+          - text
+          - vision
+        priority: 2
+        
+      - name: "meta-llama/llama-3.1-70b-instruct"
+        purpose: "custo_baixo"
+        cost_per_1k_input: 0.0008
+        cost_per_1k_output: 0.0008
+        max_tokens: 131072
+        capabilities:
+          - text
+        priority: 3
+
+  opencode:
+    enabled: false
+    base_url: "https://api.opencode.ai/v1"
+    models:
+      - name: "opencode-v1"
+        purpose: "backup"
+        cost_per_1k_input: 0.001
+        cost_per_1k_output: 0.002
+        max_tokens: 32000
+        capabilities:
+          - text
+        priority: 1
+
+# Modelo padrão para fallback
+default_model: "gpt-4o-mini"
+fallback_chain:
+  - "openai/gpt-4o-mini"
+  - "openrouter/meta-llama/llama-3.1-70b-instruct"
+  - "openrouter/google/gemini-pro-1.5"
