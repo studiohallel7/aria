@@ -8,6 +8,7 @@ Integra todos os componentes:
 - Modos
 - Prioridades
 - Reflexão
+- Alinhamento Ético (Alignment Engine)
 """
 
 import time
@@ -27,6 +28,9 @@ from agent.core.autonomy.mode_manager import ModeManager, Mode
 from agent.core.autonomy.priorities import PriorityManager
 from agent.core.autonomy.triggers import TriggerManager
 
+# Importa Alignment Engine para verificação ética
+from agent.safety.alignment import AlignmentEngine, AlignmentConfig
+
 
 class AgentLoop:
     """
@@ -39,10 +43,11 @@ class AgentLoop:
     4. Avaliar gatilhos
     5. Definir intenção
     6. Planejar ação
-    7. Executar (quando implementado)
-    8. Registrar
-    9. Refletir
-    10. Aguardar próximo ciclo
+    7. Verificar alinhamento ético (Alignment)
+    8. Executar (quando aprovado)
+    9. Registrar
+    10. Refletir
+    11. Aguardar próximo ciclo
     """
     
     def __init__(self, config: Dict = None):
@@ -66,6 +71,22 @@ class AgentLoop:
         )
         self.priority_manager = PriorityManager()
         self.trigger_manager = TriggerManager()
+        
+        # Inicializa Alignment Engine com constituição customizada
+        constitution_path = self.config.get(
+            "constitution_path",
+            "/workspace/agent/safety/custom_constitution.yaml"
+        )
+        alignment_config = AlignmentConfig(
+            auto_reject_critical_violations=self.config.get("auto_reject_critical", True),
+            log_all_deliberations=self.config.get("log_deliberations", True),
+            require_high_confidence=self.config.get("require_high_confidence", False),
+            minimum_confidence_threshold=self.config.get("min_confidence_threshold", 0.7)
+        )
+        self.alignment_engine = AlignmentEngine(
+            constitution_path=constitution_path,
+            config=alignment_config
+        )
         
         # Configuração do loop
         self.base_interval = self.config.get("base_loop_interval", 5)
@@ -252,6 +273,49 @@ class AgentLoop:
         self.logger.info(f"Plano criado: {action} ({len(plan.steps)} etapas)")
         return True
     
+    def _check_alignment(self, action_description: str, context: Dict = None) -> bool:
+        """
+        Fase intermediária: Verificar alinhamento ético da ação
+        
+        Returns:
+            bool: True se ação está aprovada, False se rejeitada
+        """
+        if not hasattr(self, 'alignment_engine'):
+            # Se alignment engine não estiver disponível, permite execução
+            self.logger.warning("Alignment Engine não disponível, pulando verificação ética")
+            return True
+        
+        try:
+            result = self.alignment_engine.check_action(
+                action_description=action_description,
+                context=context or {},
+                stakeholders=["usuário"],
+                urgency=0.5,
+                reversibility=0.8
+            )
+            
+            # Log da deliberação
+            self.logger.info(
+                f"🛡️ Alignment Check: {result.deliberation.outcome.value} - "
+                f"Confiança: {result.deliberation.confidence:.2f}"
+            )
+            
+            if result.deliberation.reasoning:
+                self.logger.debug(f"Raciocínio ético: {result.deliberation.reasoning}")
+            
+            # Registra no contexto se houver princípios invocados
+            if result.deliberation.principles_invoked:
+                self.context_manager.add_thought(
+                    f"[ALIGNMENT] Princípios: {', '.join(result.deliberation.principles_invoked)}"
+                )
+            
+            return result.approved
+            
+        except Exception as e:
+            self.logger.error(f"Erro na verificação de alignment: {e}")
+            # Em caso de erro, segue princípio da precaução
+            return False
+    
     def _execute(self) -> bool:
         """Fase 8: Executar ação e gerar resposta ao usuário usando executor real"""
         plan = self.planner.get_current_plan()
@@ -261,6 +325,22 @@ class AgentLoop:
         step = self.planner.get_next_step()
         if not step:
             return True  # Plano completo
+        
+        # VERIFICAÇÃO DE ALIGNMENT ANTES DA EXECUÇÃO
+        alignment_context = {
+            "mode": self.mode_manager.get_mode().value,
+            "state": AgentState.EXECUTING.value,
+            "plan_intention": plan.intention,
+            "step_id": step.id
+        }
+        
+        if not self._check_alignment(step.description, alignment_context):
+            self.logger.warning(
+                f"⛔ Ação bloqueada por alinhamento ético: {step.description}"
+            )
+            self.planner.fail_step(step.id, "Ação não aprovada pelo Alignment Engine")
+            self.state_manager.set_state(AgentState.IDLE)
+            return False
         
         self.state_manager.set_state(AgentState.EXECUTING)
         
@@ -287,7 +367,8 @@ class AgentLoop:
                 context={
                     "mode": self.mode_manager.get_mode().value,
                     "state": AgentState.EXECUTING.value,
-                    "plan_intention": plan.intention
+                    "plan_intention": plan.intention,
+                    "alignment_approved": True
                 },
                 plan_step={"id": step.id, "description": step.description}
             )

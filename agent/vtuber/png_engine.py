@@ -176,14 +176,10 @@ class VtuberPngEngine:
             # Simulação da chamada à ferramenta do agente
             # Na prática: result = await search_and_download(query, file_types=['.zip', '.png'])
             # Aqui vamos simular um download de um pacote de exemplo se tivesse internet
-            
-            # MOCK DE COMPORTAMENTO:
-            # Em produção, isso chamaria a API de busca real.
-            # Vamos criar uma pasta dummy para demonstrar a lógica se falhar a net.
             await asyncio.sleep(1) 
             
-        # Fallback de emergência: Criar assets procedurais simples se a net falhar
-        print("[VTuber] Criando assets procedurais de emergência (círculos/linhas).")
+        # Fallback: Criar assets procedurais simples se a net falhar ou não houver ferramentas
+        print("[VTuber] Criando assets procedurais básicos (fallback sem internet).")
         self._create_procedural_assets()
         self.asset_pack = self._scan_local_assets(self.local_assets_path)
         return self.asset_pack is not None

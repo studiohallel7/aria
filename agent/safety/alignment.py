@@ -211,9 +211,39 @@ class AlignmentEngine:
         deliberation: EthicalDeliberation
     ) -> str:
         """Sugere modificação para ação baseada na deliberação."""
-        # Em uma implementação completa, isso usaria LLM para gerar ação modificada
-        # Por enquanto, retorna placeholder
-        return f"{action} [MODIFICADO PARA ALINHAMENTO]"
+        # Usa LLM para gerar ação modificada quando há conflito ético
+        from agent.infra.llm.client import LLMMessage
+        from agent.infra.llm.router import LLMRouter
+        
+        system_prompt = """Você é um assistente de alinhamento ético.
+Sua tarefa é modificar ações propostas para que estejam em conformidade com princípios éticos.
+Retorne APENAS a ação modificada, sem explicações adicionais."""
+
+        user_prompt = f"""Ação original: {action}
+Princípios violados: {', '.join(deliberation.principles_invoked)}
+Raciocínio: {deliberation.reasoning}
+
+Modifique a ação para respeitar os princípios éticos mencionados."""
+        
+        try:
+            router = LLMRouter()
+            messages = [
+                LLMMessage(role="system", content=system_prompt),
+                LLMMessage(role="user", content=user_prompt)
+            ]
+            
+            response = router.chat_completion(
+                messages=messages,
+                purpose="raciocinio_rapido"
+            )
+            
+            if response and not response.error and response.content.strip():
+                return response.content.strip()
+        except Exception as e:
+            print(f"[FALLBACK] Usando modificação básica: {e}")
+        
+        # Fallback mínimo: adiciona sufixo indicando necessidade de revisão
+        return f"{action} [REVISAR PARA ALINHAMENTO ÉTICO]"
     
     def batch_check(
         self,
