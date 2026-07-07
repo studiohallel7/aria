@@ -1,211 +1,114 @@
-# 🤖 Autonomous AI Agent
+# 🤖 Agente Autônomo - Sistema Cognitivo Completo
 
-Single-core autonomous AI agent with multi-provider LLM support, intelligent API rotation, and persistent memory.
+Um framework avançado para agentes autônomos com pensamento contínuo, memória holográfica e ética constitutiva.
 
-## 🎯 Features
+## 🏗️ Arquitetura em 5 Fases
 
-- **Multi-Provider Support**: OpenAI, OpenRouter, OpenCode, and custom providers
-- **Intelligent API Rotation**: Automatic account switching based on usage thresholds
-- **Persistent Memory**: Short-term and long-term memory systems
-- **Autonomous Operation**: Continuous loop with self-initiative capabilities
-- **Safety First**: Action classification (safe/moderate/critical) with confirmation levels
-- **CLI Interface**: Full control via command-line interface
+| Fase | Componente | Descrição | Status |
+|------|-----------|-----------|--------|
+| **1** | Fundação | Configuração YAML, CLI, providers | ✅ |
+| **2** | Núcleo Cognitivo | Thinking, Planning, Reflection, Intention | ✅ |
+| **3** | Infraestrutura LLM | Router, Tools, Accounts, Monitoring | ✅ |
+| **4** | Memória Avançada | Grafo holográfico, consolidação, subconsciente | ✅ |
+| **5** | Ética Constitutiva | Constituição, consciência, alignment | ✅ |
 
-## 📁 Project Structure
-
-```
-agent/
-├── cmd/              # CLI entry points
-├── core/             # Agent brain (loop, cognition, state, autonomy)
-├── infra/            # External integrations (LLM providers, accounts, tools)
-├── memory/           # Memory management system
-├── safety/           # Security and guardrails
-├── config/           # Configuration files
-├── data/agent/       # Runtime data (not versioned)
-└── tests/            # Test suites
-```
-
-## 🚀 Quick Start
-
-### 1. Setup Environment
+## 🚀 Instalação
 
 ```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit with your API keys
-nano .env
+cd /workspace
+pip install -e .
 ```
 
-### 2. Install Dependencies
+## 💡 Uso Básico
+
+```python
+from agent import create_agent
+
+# Criar agente
+agent = create_agent(name="Aria")
+
+# Iniciar modo autônomo
+agent.start_autonomous_mode()
+```
+
+## 📁 Estrutura do Projeto
+
+```
+/workspace/agent/
+├── core/               # Núcleo cognitivo
+│   ├── cognition/      # Thinking, Planning, Reflection
+│   ├── state/          # Gerenciamento de estado
+│   ├── autonomy/       # Mode manager, triggers
+│   └── loop/           # Main loop do agente
+├── infra/              # Infraestrutura
+│   ├── llm/            # Router, providers, client
+│   ├── tools/          # Web, filesystem, shell
+│   ├── accounts/       # Gestão de contas e quotas
+│   └── monitoring/     # Logger, telemetry
+├── memory/             # Memória avançada
+│   └── manager.py      # Grafo holográfico
+├── safety/             # Ética constitutiva
+│   ├── constitution.py # Princípios morais
+│   ├── conscience.py   # Engine de deliberação
+│   └── alignment.py    # Verificação de alinhamento
+└── config/             # Configurações YAML
+```
+
+## 🧠 Pensamento Autônomo
+
+O agente pensa continuamente através de:
+
+1. **Drive Interno**: Motivação intrínseca baseada em curiosidade e propósito
+2. **Boredom Detection**: Detecta ociosidade e gera novas intenções
+3. **Working Set**: Mantém contexto ativo na memória de trabalho
+4. **Reflection Loop**: Aprende com cada ação executada
+
+## 🛡️ Ética Constitutiva
+
+Diferente de guardrails externos, o agente possui:
+
+- **Constituição Moral**: Princípios ponderados (CRITICAL, HIGH, MEDIUM, LOW)
+- **Consciência Ativa**: Delibera em 6 passos antes de agir
+- **Alignment Contínuo**: Verifica cada ação contra princípios
+- **Transparência**: Todo raciocínio é registradado e auditável
+
+## 📊 Métricas do Projeto
+
+- **Total de código**: ~17,000+ linhas Python
+- **Arquivos**: 100+ módulos
+- **Testes**: Suite de integração completa
+- **Fases completas**: 5/5 ✅
+
+## 📖 Documentação
+
+- [Roadmap](docs/roadmap.md)
+- [Arquitetura de Pensamento Autônomo](docs/autonomous_thinking_architecture.md)
+- [Resumo Fases 1-2](docs/phase1_2_summary.md)
+- [Fase 2 Completa](docs/phase2_complete.md)
+
+## 🔧 CLI Commands
 
 ```bash
-pip install -r requirements.txt
+# Ver status do agente
+agent-cli status
+
+# Iniciar agente
+agent-cli start
+
+# Configurar provider
+agent-cli config set-provider openai
+
+# Ver logs
+agent-cli logs --tail 100
 ```
 
-### 3. Configure Providers
+## 🎯 Próximos Passos
 
-```bash
-# List configured providers
-python -m cmd.agent_cli.main providers --list
+1. **Interface Gráfica**: Dashboard web para monitoramento
+2. **Pensamento Autônomo Profundo**: Implementar fluxo de consciência contínuo
+3. **Multi-Agent**: Suporte para colaboração entre agentes
+4. **Plugin System**: Extensibilidade via plugins
 
-# Add a new provider interactively
-python -m cmd.agent_cli.main providers --add
-```
-
-### 4. Configure Accounts
-
-```bash
-# List accounts
-python -m cmd.agent_cli.main accounts --list
-
-# Add new API account
-python -m cmd.agent_cli.main accounts --add
-```
-
-### 5. Run the Agent
-
-```bash
-# Start in work mode (follows user commands)
-python -m cmd.agent_cli.main run --mode work
-
-# Start in free mode (autonomous exploration)
-python -m cmd.agent_cli.main run --mode free
-
-# Add a task
-python -m cmd.agent_cli.main add "Analyze the codebase structure"
-
-# Check status
-python -m cmd.agent_cli.main status
-```
-
-## 📋 CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `run` | Start the agent |
-| `add` | Add a task to the queue |
-| `status` | Show agent status |
-| `logs` | View logs |
-| `config` | Manage configuration |
-| `memory` | Manage agent memory |
-| `accounts` | Manage API accounts |
-| `providers` | Manage LLM providers |
-| `health` | System health check |
-| `version` | Show version |
-
-## ⚙️ Configuration
-
-### Providers (`config/providers.yaml`)
-
-Configure LLM providers and models:
-
-```yaml
-providers:
-  - name: openai
-    enabled: true
-    models:
-      - id: gpt-4o
-        capabilities: [text, vision, reasoning]
-        cost_per_1k_input: 0.005
-        priority: 1
-```
-
-### Accounts (`config/accounts.yaml`)
-
-Manage multiple API accounts for rotation:
-
-```yaml
-accounts:
-  openai:
-    - id: account_1
-      api_key_env: OPENAI_API_KEY_1
-      monthly_budget: 60.00
-      priority: 1
-```
-
-### Settings (`config/settings.yaml`)
-
-Global agent settings including safety, monitoring, and performance.
-
-## 🔐 Safety Levels
-
-Actions are classified by risk:
-
-- 🟢 **Safe**: Auto-executed (e.g., read files, search)
-- 🟡 **Moderate**: Logged, may require confirmation (e.g., write files)
-- 🔴 **Critical**: Always requires confirmation (e.g., shell commands, network)
-
-## 🧠 Agent Modes
-
-### Work Mode
-- Follows user commands strictly
-- No autonomous initiatives outside scope
-- Best for focused tasks
-
-### Free Mode
-- Autonomous exploration
-- Self-directed learning
-- Memory writing and organization
-- Curiosity-driven actions
-
-## 🔄 API Rotation
-
-The agent automatically rotates between API accounts based on:
-
-- Usage thresholds (70%, 85%, 95%)
-- Cost optimization
-- Success/failure rates
-- Latency considerations
-
-## 📊 Monitoring
-
-Built-in telemetry tracks:
-
-- CPU/Memory/Disk usage
-- API response times
-- Token consumption
-- Cost tracking
-- Error rates
-
-## 🛠️ Development
-
-```bash
-# Run tests
-pytest
-
-# Run in development mode
-./scripts/run_dev.sh
-
-# Validate configuration
-python -m cmd.agent_cli.main config --validate
-```
-
-## 📝 Adding Custom Providers
-
-1. Use the interactive CLI:
-   ```bash
-   python -m cmd.agent_cli.main providers --add
-   ```
-
-2. Or edit `config/providers.yaml` manually:
-   ```yaml
-   - name: my-provider
-     enabled: true
-     type: openai_compatible
-     base_url: https://api.my-provider.com/v1
-     api_key_env: MY_PROVIDER_KEY
-     models:
-       - id: my-model
-         capabilities: [text]
-         cost_per_1k_input: 0.001
-         priority: 1
-   ```
-
-## 📄 License
+## 📄 Licença
 
 MIT License
-
-## 🤝 Contributing
-
-See `docs/roadmap.md` for planned features and improvements.

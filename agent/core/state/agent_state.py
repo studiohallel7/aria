@@ -1,220 +1,216 @@
 """
-Core state management for the autonomous agent.
-Handles agent state, context, and persistence.
+Agente State - Gerenciamento de estado do agente
+
+Estados possíveis:
+- IDLE: Ocioso, aguardando gatilhos
+- THINKING: Processando informações, planejando
+- EXECUTING: Executando ações
+- EXPLORING: Explorando ativamente (modo livre)
 """
 
 from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any, List
 import json
 import os
 
 
 class AgentState(Enum):
-    """Possible states of the agent."""
     IDLE = "idle"
     THINKING = "thinking"
     EXECUTING = "executing"
     EXPLORING = "exploring"
 
 
-class OperationMode(Enum):
-    """Operation modes of the agent."""
-    TRABALHO = "trabalho"  # Work mode - follows user strictly
-    LIVRE = "livre"        # Free mode - exploration and learning
+class AgentMode(Enum):
+    WORK = "work"      # Modo trabalho: segue usuário estritamente
+    FREE = "free"      # Modo livre: exploração e auto-iniciativa
+
+
+@dataclass
+class Task:
+    """Tarefa a ser executada pelo agente"""
+    id: str
+    description: str
+    priority: int  # 1-10, sendo 10 mais prioritário
+    source: str    # 'user', 'internal', 'auto'
+    created_at: datetime = field(default_factory=datetime.now)
+    status: str = "pending"  # pending, running, completed, failed
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    
+    def to_dict(self) -> Dict:
+        return {
+            "id": self.id,
+            "description": self.description,
+            "priority": self.priority,
+            "source": self.source,
+            "created_at": self.created_at.isoformat(),
+            "status": self.status,
+            "metadata": self.metadata
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Task':
+        return cls(
+            id=data["id"],
+            description=data["description"],
+            priority=data["priority"],
+            source=data["source"],
+            created_at=datetime.fromisoformat(data["created_at"]),
+            status=data["status"],
+            metadata=data.get("metadata", {})
+        )
 
 
 @dataclass
 class AgentStatus:
-    """Current status of the agent."""
+    """Status atual do agente"""
     state: AgentState = AgentState.IDLE
-    mode: OperationMode = OperationMode.TRABALHO
-    current_task: Optional[str] = None
+    mode: AgentMode = AgentMode.WORK
+    current_task: Optional[Task] = None
+    last_action_time: Optional[datetime] = None
+    idle_since: datetime = field(default_factory=datetime.now)
     cycle_count: int = 0
-    last_cycle_time: Optional[datetime] = None
-    thought_depth: int = 0
-    tool_calls_this_cycle: int = 0
-    active_account: Optional[str] = None
-    error_count: int = 0
+    errors_in_cycle: int = 0
+    llm_calls_in_cycle: int = 0
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict:
         return {
             "state": self.state.value,
             "mode": self.mode.value,
-            "current_task": self.current_task,
+            "current_task": self.current_task.to_dict() if self.current_task else None,
+            "last_action_time": self.last_action_time.isoformat() if self.last_action_time else None,
+            "idle_since": self.idle_since.isoformat(),
             "cycle_count": self.cycle_count,
-            "last_cycle_time": self.last_cycle_time.isoformat() if self.last_cycle_time else None,
-            "thought_depth": self.thought_depth,
-            "tool_calls_this_cycle": self.tool_calls_this_cycle,
-            "active_account": self.active_account,
-            "error_count": self.error_count,
+            "errors_in_cycle": self.errors_in_cycle,
+            "llm_calls_in_cycle": self.llm_calls_in_cycle
         }
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AgentStatus":
-        return cls(
-            state=AgentState(data.get("state", "idle")),
-            mode=OperationMode(data.get("mode", "trabalho")),
-            current_task=data.get("current_task"),
-            cycle_count=data.get("cycle_count", 0),
-            last_cycle_time=datetime.fromisoformat(data["last_cycle_time"]) if data.get("last_cycle_time") else None,
-            thought_depth=data.get("thought_depth", 0),
-            tool_calls_this_cycle=data.get("tool_calls_this_cycle", 0),
-            active_account=data.get("active_account"),
-            error_count=data.get("error_count", 0),
-        )
 
 
-@dataclass
-class ContextItem:
-    """An item in the short-term memory context."""
-    content: str
-    timestamp: datetime = field(default_factory=datetime.now)
-    priority: int = 0  # Higher = more important
-    source: str = "internal"  # internal, user, external, tool
+class StateManager:
+    """Gerencia o estado persistente do agente"""
     
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "content": self.content,
-            "timestamp": self.timestamp.isoformat(),
-            "priority": self.priority,
-            "source": self.source,
-        }
+    def __init__(self, base_dir: str = "~/.agent"):
+        self.base_dir = os.path.expanduser(base_dir)
+        self.state_file = os.path.join(self.base_dir, "state.json")
+        self.tasks_file = os.path.join(self.base_dir, "tasks.json")
+        self._ensure_dirs()
+        self.status = AgentStatus()
+        self.tasks: List[Task] = []
+        self._load_state()
     
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ContextItem":
-        return cls(
-            content=data["content"],
-            timestamp=datetime.fromisoformat(data["timestamp"]),
-            priority=data.get("priority", 0),
-            source=data.get("source", "internal"),
-        )
-
-
-class ContextManager:
-    """Manages short-term context and working memory."""
+    def _ensure_dirs(self):
+        """Garante que diretórios existem"""
+        os.makedirs(self.base_dir, exist_ok=True)
+        os.makedirs(os.path.join(self.base_dir, "identity"), exist_ok=True)
+        os.makedirs(os.path.join(self.base_dir, "memory"), exist_ok=True)
+        os.makedirs(os.path.join(self.base_dir, "logs"), exist_ok=True)
+        os.makedirs(os.path.join(self.base_dir, "scratchpad"), exist_ok=True)
     
-    def __init__(self, max_items: int = 50):
-        self.max_items = max_items
-        self.items: List[ContextItem] = []
-        self.user_tasks: List[Dict[str, Any]] = []
-        self.internal_goals: List[Dict[str, Any]] = []
+    def _load_state(self):
+        """Carrega estado persistente"""
+        if os.path.exists(self.state_file):
+            try:
+                with open(self.state_file, 'r') as f:
+                    data = json.load(f)
+                    self.status = AgentStatus(
+                        state=AgentState(data.get("state", "idle")),
+                        mode=AgentMode(data.get("mode", "work")),
+                        cycle_count=data.get("cycle_count", 0),
+                        idle_since=datetime.fromisoformat(data.get("idle_since", datetime.now().isoformat()))
+                    )
+            except Exception as e:
+                print(f"Warning: Could not load state: {e}")
         
-    def add_item(self, content: str, priority: int = 0, source: str = "internal") -> None:
-        """Add an item to context."""
-        item = ContextItem(content=content, priority=priority, source=source)
-        self.items.append(item)
+        if os.path.exists(self.tasks_file):
+            try:
+                with open(self.tasks_file, 'r') as f:
+                    data = json.load(f)
+                    self.tasks = [Task.from_dict(t) for t in data.get("tasks", [])]
+            except Exception as e:
+                print(f"Warning: Could not load tasks: {e}")
+    
+    def _save_state(self):
+        """Salva estado persistente"""
+        with open(self.state_file, 'w') as f:
+            json.dump(self.status.to_dict(), f, indent=2)
         
-        # Sort by priority and trim
-        self.items.sort(key=lambda x: (-x.priority, x.timestamp))
-        if len(self.items) > self.max_items:
-            self.items = self.items[:self.max_items]
+        with open(self.tasks_file, 'w') as f:
+            json.dump({"tasks": [t.to_dict() for t in self.tasks]}, f, indent=2)
     
-    def get_context(self, limit: int = 10) -> List[str]:
-        """Get recent context items as strings."""
-        return [item.content for item in self.items[-limit:]]
-    
-    def clear_cycle_data(self) -> None:
-        """Clear cycle-specific data."""
-        self.items = [item for item in self.items if item.priority > 0]
-    
-    def add_user_task(self, task: str, priority: int = 10) -> None:
-        """Add a user task (high priority by default)."""
-        self.user_tasks.append({
-            "task": task,
-            "priority": priority,
-            "created_at": datetime.now().isoformat(),
-            "status": "pending",
-        })
-    
-    def get_pending_tasks(self) -> List[Dict[str, Any]]:
-        """Get all pending tasks sorted by priority."""
-        pending = [t for t in self.user_tasks if t["status"] == "pending"]
-        pending.sort(key=lambda x: -x["priority"])
-        return pending
-    
-    def complete_task(self, task_idx: int) -> None:
-        """Mark a task as completed."""
-        if 0 <= task_idx < len(self.user_tasks):
-            self.user_tasks[task_idx]["status"] = "completed"
-            self.user_tasks[task_idx]["completed_at"] = datetime.now().isoformat()
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "items": [item.to_dict() for item in self.items],
-            "user_tasks": self.user_tasks,
-            "internal_goals": self.internal_goals,
-        }
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any], max_items: int = 50) -> "ContextManager":
-        ctx = cls(max_items=max_items)
-        ctx.items = [ContextItem.from_dict(item) for item in data.get("items", [])]
-        ctx.user_tasks = data.get("user_tasks", [])
-        ctx.internal_goals = data.get("internal_goals", [])
-        return ctx
-
-
-class StatePersistence:
-    """Handles persistence of agent state to disk."""
-    
-    def __init__(self, base_path: str = "./data/agent"):
-        self.base_path = base_path
-        self.state_path = os.path.join(base_path, "state.json")
-        self.context_path = os.path.join(base_path, "context.json")
+    def set_state(self, state: AgentState):
+        """Muda o estado do agente"""
+        old_state = self.status.state
+        self.status.state = state
         
-    def save_state(self, status: AgentStatus) -> None:
-        """Save agent status to disk."""
-        os.makedirs(os.path.dirname(self.state_path), exist_ok=True)
-        with open(self.state_path, 'w') as f:
-            json.dump(status.to_dict(), f, indent=2)
+        if state == AgentState.IDLE:
+            self.status.idle_since = datetime.now()
+        elif old_state == AgentState.IDLE:
+            self.status.idle_since = datetime.now()
+        
+        self._save_state()
     
-    def load_state(self) -> Optional[AgentStatus]:
-        """Load agent status from disk."""
-        if os.path.exists(self.state_path):
-            with open(self.state_path, 'r') as f:
-                data = json.load(f)
-                return AgentStatus.from_dict(data)
-        return None
+    def set_mode(self, mode: AgentMode):
+        """Muda o modo do agente"""
+        self.status.mode = mode
+        self._save_state()
     
-    def save_context(self, context_manager: ContextManager) -> None:
-        """Save context to disk."""
-        os.makedirs(os.path.dirname(self.context_path), exist_ok=True)
-        with open(self.context_path, 'w') as f:
-            json.dump(context_manager.to_dict(), f, indent=2)
+    def add_task(self, task: Task):
+        """Adiciona uma tarefa à fila"""
+        self.tasks.append(task)
+        self._save_state()
     
-    def load_context(self, max_items: int = 50) -> ContextManager:
-        """Load context from disk."""
-        if os.path.exists(self.context_path):
-            with open(self.context_path, 'r') as f:
-                data = json.load(f)
-                return ContextManager.from_dict(data, max_items=max_items)
-        return ContextManager(max_items=max_items)
-
-
-# Singleton instances
-_default_persistence = StatePersistence()
-
-
-def get_current_state() -> AgentStatus:
-    """Get current agent state from disk or create new."""
-    state = _default_persistence.load_state()
-    if state is None:
-        state = AgentStatus()
-    return state
-
-
-def save_current_state(state: AgentStatus) -> None:
-    """Save current agent state to disk."""
-    _default_persistence.save_state(state)
-
-
-def get_context_manager(max_items: int = 50) -> ContextManager:
-    """Get context manager from disk or create new."""
-    return _default_persistence.load_context(max_items=max_items)
-
-
-def save_context_manager(ctx: ContextManager) -> None:
-    """Save context manager to disk."""
-    _default_persistence.save_context(ctx)
+    def get_next_task(self) -> Optional[Task]:
+        """Retorna a próxima tarefa por prioridade"""
+        pending = [t for t in self.tasks if t.status == "pending"]
+        if not pending:
+            return None
+        
+        # Ordena por prioridade (maior primeiro) e depois por tempo de criação
+        pending.sort(key=lambda t: (-t.priority, t.created_at))
+        return pending[0]
+    
+    def get_user_tasks(self) -> List[Task]:
+        """Retorna tarefas do usuário pendentes"""
+        return [t for t in self.tasks if t.source == "user" and t.status == "pending"]
+    
+    def mark_task_status(self, task_id: str, status: str):
+        """Marca o status de uma tarefa"""
+        for task in self.tasks:
+            if task.id == task_id:
+                task.status = status
+                break
+        self._save_state()
+    
+    def increment_cycle(self):
+        """Incrementa contador de ciclos"""
+        self.status.cycle_count += 1
+        self.status.errors_in_cycle = 0
+        self.status.llm_calls_in_cycle = 0
+        self._save_state()
+    
+    def increment_error(self):
+        """Registra erro no ciclo atual"""
+        self.status.errors_in_cycle += 1
+        self._save_state()
+    
+    def increment_llm_call(self):
+        """Registra chamada LLM no ciclo atual"""
+        self.status.llm_calls_in_cycle += 1
+        self._save_state()
+    
+    def update_last_action(self):
+        """Atualiza timestamp da última ação"""
+        self.status.last_action_time = datetime.now()
+        self._save_state()
+    
+    def get_idle_time(self) -> float:
+        """Retorna tempo em segundos desde que está ocioso"""
+        if self.status.state != AgentState.IDLE:
+            return 0.0
+        return (datetime.now() - self.status.idle_since).total_seconds()
+    
+    def get_status(self) -> AgentStatus:
+        """Retorna status atual"""
+        return self.status
