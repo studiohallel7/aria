@@ -1,63 +1,170 @@
 """
-Intention Manager - Decides agent's next action intention.
-Based on state, triggers, and user tasks.
+Intention System - Sistema de intenção do agente
+
+Tipos de intenção:
+- ACT: Agir/executar ação
+- NO_ACT: Não agir, apenas observar
+- EXPLORE: Explorar ativamente
+- LEARN: Aprender/criar memória
 """
 
-from typing import Dict, Any, Optional
-from datetime import datetime
+from enum import Enum
+from dataclasses import dataclass
+from typing import Optional, List, Dict
+import random
 
 
-class IntentionManager:
-    """Manages agent intentions and decision-making."""
+class IntentionType(Enum):
+    ACT = "act"           # Executar ação específica
+    NO_ACT = "no_act"     # Não agir
+    EXPLORE = "explore"   # Explorar contexto
+    LEARN = "learn"       # Aprender/organizar memória
+    REFLECT = "reflect"   # Refletir sobre ações passadas
+    WAIT = "wait"         # Aguardar condições
+
+
+@dataclass
+class Intention:
+    """Representa uma intenção do agente"""
+    intention_type: IntentionType
+    reason: str
+    priority: int = 5  # 1-10
+    metadata: Dict = None
+    
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
+
+
+class IntentionEngine:
+    """
+    Motor de decisão de intenções
+    
+    Avalia contexto interno e externo para determinar
+    a próxima intenção do agente
+    """
     
     def __init__(self):
-        self.priority_weights = {
-            "user_task": 100,
-            "error_recovery": 90,
-            "explore": 30,
-            "learn": 25,
-            "reflect": 20,
-            "none": 0,
-        }
+        self.current_intention: Optional[Intention] = None
+        self.intention_history: List[Intention] = []
     
-    def decide(
+    def evaluate(
         self,
-        state: Any,
-        observations: Dict[str, Any],
-        triggers: Dict[str, bool],
         has_user_tasks: bool,
-    ) -> str:
-        """Decide the next intention based on current context."""
+        idle_time: float,
+        mode: str,
+        context_summary: Dict = None,
+        errors_recent: int = 0,
+        llm_calls_recent: int = 0,
+        max_llm_calls: int = 3
+    ) -> Intention:
+        """
+        Avalia condições e determina intenção
         
-        # User tasks always have highest priority
+        Args:
+            has_user_tasks: Se existem tarefas do usuário
+            idle_time: Tempo ocioso em segundos
+            mode: 'work' ou 'free'
+            context_summary: Resumo do contexto atual
+            errors_recent: Número de erros recentes
+            llm_calls_recent: Chamadas LLM no ciclo atual
+            max_llm_calls: Máximo de chamadas por ciclo
+        
+        Returns:
+            Intention determinada
+        """
+        
+        # Regra 1: Tarefas do usuário têm prioridade máxima
         if has_user_tasks:
-            return "user_task"
+            intention = Intention(
+                intention_type=IntentionType.ACT,
+                reason="Tarefa do usuário pendente",
+                priority=10,
+                metadata={"source": "user"}
+            )
+            self.current_intention = intention
+            self.intention_history.append(intention)
+            return intention
         
-        # Check for error recovery needs
-        if observations.get("error_count", 0) > 5:
-            return "error_recovery"
+        # Regra 2: Erros recentes limitam ação
+        if errors_recent >= 3:
+            intention = Intention(
+                intention_type=IntentionType.WAIT,
+                reason="Muitos erros recentes, aguardando recuperação",
+                priority=8,
+                metadata={"errors": errors_recent}
+            )
+            self.current_intention = intention
+            self.intention_history.append(intention)
+            return intention
         
-        # Mode-based decisions
-        if state.mode.value == "livre":
-            # In free mode, consider exploration and learning
-            if triggers.get("curiosity", False):
-                return "explore"
-            if triggers.get("learning_opportunity", False):
-                return "learn"
-            if triggers.get("reflection_needed", False):
-                return "reflect"
+        # Regra 3: Limite de chamadas LLM atingido
+        if llm_calls_recent >= max_llm_calls:
+            intention = Intention(
+                intention_type=IntentionType.NO_ACT,
+                reason="Limite de chamadas LLM no ciclo atingido",
+                priority=7,
+                metadata={"llm_calls": llm_calls_recent}
+            )
+            self.current_intention = intention
+            self.intention_history.append(intention)
+            return intention
         
-        # Default: no action needed
-        return "none"
+        # Regra 4: Modo trabalho sem tarefas = não age
+        if mode == "work":
+            intention = Intention(
+                intention_type=IntentionType.NO_ACT,
+                reason="Modo trabalho sem tarefas pendentes",
+                priority=5
+            )
+            self.current_intention = intention
+            self.intention_history.append(intention)
+            return intention
+        
+        # Regra 5: Modo livre - pode explorar se ocioso há tempo suficiente
+        if mode == "free":
+            if idle_time > 60:  # 60 segundos ocioso
+                # Curiosidade baseada em aleatoriedade controlada
+                if random.random() < 0.3:  # 30% de chance
+                    intention = Intention(
+                        intention_type=IntentionType.EXPLORE,
+                        reason="Modo livre, ocioso há {}s, curiosidade ativada".format(int(idle_time)),
+                        priority=4,
+                        metadata={"idle_time": idle_time, "curiosity": True}
+                    )
+                    self.current_intention = intention
+                    self.intention_history.append(intention)
+                    return intention
+            
+            # Pode usar tempo para aprender/organizar memória
+            intention = Intention(
+                intention_type=IntentionType.LEARN,
+                reason="Modo livre, organizando memória",
+                priority=3,
+                metadata={"idle_time": idle_time}
+            )
+            self.current_intention = intention
+            self.intention_history.append(intention)
+            return intention
+        
+        # Default: não age
+        intention = Intention(
+            intention_type=IntentionType.NO_ACT,
+            reason="Nenhuma condição de ação atendida",
+            priority=1
+        )
+        self.current_intention = intention
+        self.intention_history.append(intention)
+        return intention
     
-    def get_intention_description(self, intention: str) -> str:
-        """Get human-readable description of an intention."""
-        descriptions = {
-            "user_task": "Executar tarefa do usuário",
-            "error_recovery": "Recuperar de erro",
-            "explore": "Explorar ativamente",
-            "learn": "Aprender novo conhecimento",
-            "reflect": "Refletir sobre ações",
-            "none": "Aguardar próximos gatilhos",
-        }
-        return descriptions.get(intention, "Intenção desconhecida")
+    def get_current_intention(self) -> Optional[Intention]:
+        """Retorna intenção atual"""
+        return self.current_intention
+    
+    def get_last_n_intentions(self, n: int = 10) -> List[Intention]:
+        """Retorna últimas n intenções"""
+        return self.intention_history[-n:]
+    
+    def clear_history(self):
+        """Limpa histórico de intenções"""
+        self.intention_history = []
