@@ -150,7 +150,10 @@ class ThinkingEngine:
         return topics
 
     def _run_thinking_cycle(self, content: str, trigger_type: str, source: str) -> ThinkingProcess:
-        """Executa ciclo completo de pensamento."""
+        """Executa ciclo completo de pensamento usando LLM REAL."""
+        from agent.infra.llm.client import get_client, LLMMessage
+        from agent.infra.llm.router import LLMRouter
+        
         process_id = f"think_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{trigger_type}"
         
         process = ThinkingProcess(
@@ -164,23 +167,88 @@ class ThinkingEngine:
         
         self.current_process = process
         
-        # Simulação de cadeia de pensamento (Chain of Thought)
+        # Tenta usar LLM real para gerar cadeia de pensamento
+        client = get_client()
+        router = LLMRouter()
+        
+        # Monta prompt para pensamento Chain-of-Thought
+        system_prompt = """Você é o motor de pensamento interno de um agente autônomo.
+Sua tarefa é analisar profundamente o estímulo recebido e gerar passos de raciocínio lógicos.
+Responda APENAS com uma lista numerada de 3 a 5 passos de pensamento, seguidos de uma conclusão.
+Formato:
+1. [Passo 1]
+2. [Passo 2]
+...
+Conclusão: [Sua conclusão]"""
+
+        user_prompt = f"Estímulo ({trigger_type} de {source}): {content}\n\nContexto atual: {json.dumps(self.context_data, default=str)[:500]}"
+        
+        try:
+            # Seleciona modelo rápido para pensamento interno
+            messages = [
+                LLMMessage(role="system", content=system_prompt),
+                LLMMessage(role="user", content=user_prompt)
+            ]
+            
+            # Tenta chamar LLM real (método correto: chat_completion)
+            router = LLMRouter()
+            response = router.chat_completion(
+                messages=messages,
+                purpose="raciocinio_rapido"
+            )
+            
+            if response and not response.error and response.content.strip():
+                # Parse da resposta do LLM para extrair passos
+                lines = response.content.strip().split('\n')
+                thought_steps = []
+                conclusion_text = None
+                
+                for line in lines:
+                    line = line.strip()
+                    if line.lower().startswith("conclusão:") or line.lower().startswith("conclusion:"):
+                        conclusion_text = line.split(":", 1)[1].strip()
+                    elif line[0].isdigit() and "." in line:
+                        thought_content = line.split(".", 1)[1].strip()
+                        thought_steps.append(thought_content)
+                
+                # Adiciona passos gerados pelo LLM
+                for i, step_content in enumerate(thought_steps[:self.max_depth], start=1):
+                    step = ThoughtStep(
+                        step_number=i,
+                        content=step_content,
+                        confidence=0.9 - (i * 0.1)
+                    )
+                    process.steps.append(step)
+                
+                # Usa conclusão do LLM ou gera uma padrão
+                if not conclusion_text:
+                    conclusion_text = f"Análise concluída após {len(thought_steps)} passos de raciocínio."
+                
+                # Decide ação baseada no conteúdo
+                action = self._infer_action_from_conclusion(conclusion_text, trigger_type)
+                
+                self.conclude(conclusion_text, action, confidence=0.85)
+                return process
+                
+        except Exception as e:
+            print(f"[WARNING] LLM indisponível, usando pensamento simulado: {e}")
+        
+        # FALLBACK: Simulação se LLM não estiver disponível (sem API key, etc)
+        print(f"[MOCK MODE] Gerando pensamentos simulados...")
         current_thought = content
         for i in range(1, min(self.max_depth, random.randint(2, 4))):
             step_content = f"Analisando implicações de: {current_thought[:60]}..."
             step = ThoughtStep(
                 step_number=i,
                 content=step_content,
-                confidence=0.9 - (i * 0.1)  # Confiança diminui com profundidade
+                confidence=0.9 - (i * 0.1)
             )
             process.steps.append(step)
             current_thought = step_content
             
-        # Conclusão automática simulada
         conclusion = f"Conclusão gerada após análise de {len(process.steps)} passos."
         action = None
         
-        # Decide se requer ação baseado no tipo de gatilho
         if trigger_type == "spontaneous" and random.random() > 0.7:
             action = "monitor_resources"
         elif trigger_type == "reactive":
@@ -189,6 +257,23 @@ class ThinkingEngine:
         self.conclude(conclusion, action, confidence=0.85)
         
         return process
+    
+    def _infer_action_from_conclusion(self, conclusion: str, trigger_type: str) -> Optional[str]:
+        """Infere ação recomendada baseada na conclusão."""
+        conclusion_lower = conclusion.lower()
+        
+        if any(word in conclusion_lower for word in ["erro", "problema", "falha", "ajustar"]):
+            return "fix_issue"
+        elif any(word in conclusion_lower for word in ["arquivo", "salvar", "criar", "modificar"]):
+            return "file_operation"
+        elif any(word in conclusion_lower for word in ["perguntar", "usuário", "responder"]):
+            return "respond_to_user"
+        elif any(word in conclusion_lower for word in ["otimizar", "melhorar", "eficiente"]):
+            return "optimize_system"
+        elif trigger_type == "spontaneous":
+            return "log_insight"
+        
+        return None
     
     def add_thought_step(self, content: str, confidence: float = 0.5) -> Optional[ThoughtStep]:
         """
