@@ -1,0 +1,66 @@
+# Configuração de contas e quotas por provider
+
+accounts:
+  openai:
+    - id: "primary"
+      api_key_env: "OPENAI_API_KEY"
+      enabled: true
+      priority: 1
+      quota:
+        daily_limit_usd: 10.0
+        monthly_limit_usd: 200.0
+        current_daily_spent: 0.0
+        current_monthly_spent: 0.0
+        reset_time_daily: "00:00"
+        reset_time_monthly: 1  # dia do mês
+        
+    - id: "secondary"
+      api_key_env: "OPENAI_API_KEY_2"
+      enabled: false
+      priority: 2
+      quota:
+        daily_limit_usd: 5.0
+        monthly_limit_usd: 100.0
+        current_daily_spent: 0.0
+        current_monthly_spent: 0.0
+        reset_time_daily: "00:00"
+        reset_time_monthly: 1
+
+  openrouter:
+    - id: "primary"
+      api_key_env: "OPENROUTER_API_KEY"
+      enabled: true
+      priority: 1
+      quota:
+        daily_limit_usd: 5.0
+        monthly_limit_usd: 100.0
+        current_daily_spent: 0.0
+        current_monthly_spent: 0.0
+        reset_time_daily: "00:00"
+        reset_time_monthly: 1
+
+  opencode:
+    - id: "primary"
+      api_key_env: "OPENCODE_API_KEY"
+      enabled: false
+      priority: 1
+      quota:
+        daily_limit_usd: 2.0
+        monthly_limit_usd: 50.0
+        current_daily_spent: 0.0
+        current_monthly_spent: 0.0
+        reset_time_daily: "00:00"
+        reset_time_monthly: 1
+
+# Configurações globais de rotação
+rotation:
+  enabled: true
+  strategy: "quota_based"  # quota_based | round_robin | latency_based
+  cooldown_seconds: 300
+  health_check_interval: 60
+  
+# Thresholds de consumo (percentual)
+thresholds:
+  warning: 70      # alerta visual
+  critical: 85     # começa a rotacionar
+  emergency: 95    # bloqueia novas requisições, usa apenas fallback
