@@ -1,25 +1,29 @@
 ```
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+env/
+venv/
+.venv/
+.venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+*.pot
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
 
 # Environment
 .env
@@ -27,19 +31,30 @@ wheels/
 .env.*
 
 # Dependencies
-.venv/
-venv/
-env/
-ENV/
-
-# Logs
-*.log
+node_modules/
+target/
+.gradle/
+build/
+dist/
+*.egg-info/
+.eggs/
+.installed.cfg
+develop-eggs/
+parts/
+sdist/
+var/
+wheels/
+*.whl
+lib/
+lib64/
+share/python-wheels/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.tmp
 
 # OS
 .DS_Store

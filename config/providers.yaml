@@ -1,0 +1,114 @@
+# Configuração de Providers de LLM
+# Adicione novos providers manualmente abaixo
+
+providers:
+  # OpenAI
+  - name: openai
+    enabled: true
+    type: openai
+    base_url: https://api.openai.com/v1
+    models:
+      - id: gpt-4o
+        capabilities: [text, vision, reasoning]
+        cost_per_1k_input: 0.005
+        cost_per_1k_output: 0.015
+        max_context: 128000
+        priority: 1
+      - id: gpt-4o-mini
+        capabilities: [text, vision]
+        cost_per_1k_input: 0.00015
+        cost_per_1k_output: 0.0006
+        max_context: 128000
+        priority: 2
+      - id: o1-preview
+        capabilities: [reasoning, code]
+        cost_per_1k_input: 0.015
+        cost_per_1k_output: 0.06
+        max_context: 128000
+        priority: 3
+
+  # OpenRouter (agrega múltiplos modelos)
+  - name: openrouter
+    enabled: true
+    type: openrouter
+    base_url: https://openrouter.ai/api/v1
+    api_key_env: OPENROUTER_API_KEY
+    models:
+      - id: anthropic/claude-3.5-sonnet
+        capabilities: [text, vision, code]
+        cost_per_1k_input: 0.003
+        cost_per_1k_output: 0.015
+        max_context: 200000
+        priority: 1
+      - id: google/gemini-pro-1.5
+        capabilities: [text, vision, code]
+        cost_per_1k_input: 0.0025
+        cost_per_1k_output: 0.0075
+        max_context: 1000000
+        priority: 2
+      - id: meta-llama/llama-3.1-405b-instruct
+        capabilities: [text, code]
+        cost_per_1k_input: 0.0008
+        cost_per_1k_output: 0.0008
+        max_context: 32000
+        priority: 3
+
+  # OpenCode Go (código especializado)
+  - name: opencode
+    enabled: false
+    type: opencode
+    base_url: https://api.opencode.ai/v1
+    models:
+      - id: opencode-v1
+        capabilities: [code, debugging, refactoring]
+        cost_per_1k_input: 0.001
+        cost_per_1k_output: 0.002
+        max_context: 64000
+        priority: 1
+
+  # Provider personalizado (adicione os seus)
+  - name: custom-provider
+    enabled: false
+    type: openai_compatible
+    base_url: YOUR_CUSTOM_URL
+    api_key_env: CUSTOM_API_KEY
+    models:
+      - id: custom-model-id
+        capabilities: [text]
+        cost_per_1k_input: 0.001
+        cost_per_1k_output: 0.002
+        max_context: 32000
+        priority: 1
+
+# Configurações globais
+settings:
+  # Rotação automática quando consumo atingir threshold
+  auto_rotate_on_threshold: true
+  
+  # Thresholds de consumo (%)
+  thresholds:
+    warning: 70
+    critical: 85
+    maximum: 95
+  
+  # Timeout padrão para chamadas (segundos)
+  default_timeout: 30
+  
+  # Número máximo de retries por falha
+  max_retries: 3
+  
+  # Backoff exponencial entre retries
+  retry_backoff_multiplier: 2
+  
+  # Habilitar cache de respostas (reduz custo)
+  enable_response_cache: true
+  cache_ttl_hours: 24
+  
+  # Log detalhado de uso de API
+  log_api_usage: true
+  
+  # Modelo fallback quando todos falharem
+  fallback_model: gpt-4o-mini
+  
+  # Priorizar custo vs performance (0-1, 0=mais barato, 1=mais rápido)
+  cost_performance_balance: 0.5

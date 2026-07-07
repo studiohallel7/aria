@@ -1,0 +1,191 @@
+# Configurações Gerais do Agente
+
+agent:
+  # Nome e identidade
+  name: "Autonomous Agent"
+  version: "1.0.0"
+  
+  # Diretório base para persistência (~/.agent)
+  base_dir: "~/.agent"
+  
+  # Modo inicial: work ou free
+  initial_mode: work
+  
+  # Intervalo base do loop (segundos)
+  base_loop_interval: 5
+  
+  # Intervalo mínimo entre ações (segundos)
+  min_action_interval: 2
+  
+  # Intervalo máximo de inatividade antes de auto-iniciativa (segundos)
+  idle_trigger_time: 60
+
+# Cognição
+cognition:
+  # Profundidade máxima de pensamento (camadas)
+  max_thinking_depth: 5
+  
+  # Tempo máximo de raciocínio por ciclo (segundos)
+  max_reasoning_time: 30
+  
+  # Número máximo de chamadas LLM por ciclo
+  max_llm_calls_per_cycle: 3
+  
+  # Tamanho do contexto de memória de curto prazo
+  short_term_memory_size: 10
+  
+  # Habilitar reflexão pós-ação
+  enable_reflection: true
+  
+  # Probabilidade de curiosidade em modo livre (0-1)
+  curiosity_probability: 0.3
+
+# Segurança
+safety:
+  # Nível de confirmação necessário
+  # always: sempre pede confirmação
+  # moderate: apenas ações moderadas/críticas
+  # minimal: apenas ações críticas
+  confirmation_level: moderate
+  
+  # Comandos shell permitidos (lista branca parcial)
+  allowed_shell_commands:
+    - ls
+    - cat
+    - grep
+    - find
+    - pwd
+    - echo
+    - mkdir
+    - cp
+    - mv
+    - rm
+    - git
+    - python
+    - pip
+    - curl
+    - wget
+    
+  # Comandos shell bloqueados (lista negra)
+  blocked_shell_commands:
+    - sudo
+    - su
+    - chmod 777
+    - mkfs
+    - dd
+    - shutdown
+    - reboot
+    - systemctl stop
+    - systemctl disable
+    
+  # Domínios permitidos para acesso web
+  allowed_domains:
+    - github.com
+    - pypi.org
+    - docs.python.org
+    - stackoverflow.com
+    - wikipedia.org
+    
+  # Domínios bloqueados
+  blocked_domains: []
+  
+  # Timeout para operações de rede (segundos)
+  network_timeout: 30
+  
+  # Máximo de downloads por sessão
+  max_downloads_per_session: 10
+
+# Monitoramento
+monitoring:
+  # Habilitar telemetria
+  enable_telemetry: true
+  
+  # Intervalo de coleta de métricas (segundos)
+  metrics_interval: 30
+  
+  # Métricas a coletar
+  collect_metrics:
+    - cpu_usage
+    - memory_usage
+    - disk_usage
+    - network_latency
+    - api_response_time
+    - api_error_rate
+    - token_usage
+    - cost_tracking
+    
+  # Thresholds de alerta
+  alerts:
+    cpu_warning: 80
+    cpu_critical: 95
+    memory_warning: 75
+    memory_critical: 90
+    disk_warning: 80
+    disk_critical: 95
+    
+  # Exportar métricas para arquivo
+  export_metrics: true
+  metrics_file: "~/.agent/logs/metrics.jsonl"
+
+# Logs
+logging:
+  # Nível de log: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: INFO
+  
+  # Formato do log
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # Arquivo de log principal
+  file: "~/.agent/logs/agent.log"
+  
+  # Rotação de logs
+  rotation:
+    enabled: true
+    max_size_mb: 50
+    backup_count: 5
+    
+  # Log de ações executadas
+  log_actions: true
+  actions_file: "~/.agent/logs/actions.jsonl"
+  
+  # Log de decisões do agente
+  log_decisions: true
+  decisions_file: "~/.agent/logs/decisions.jsonl"
+
+# Persistência
+persistence:
+  # Auto-save da memória (segundos)
+  autosave_interval: 60
+  
+  # Compactar memória antiga
+  compress_old_memory: true
+  compress_after_days: 7
+  
+  # Manter histórico de execuções
+  keep_execution_history: true
+  history_retention_days: 30
+  
+  # Backup automático
+  auto_backup: true
+  backup_interval_hours: 24
+  backup_dir: "~/.agent/backups"
+
+# Performance
+performance:
+  # Usar cache local para respostas LLM
+  use_llm_cache: true
+  cache_max_size_mb: 500
+  
+  # Parallelismo para tarefas independentes
+  enable_parallel_tasks: true
+  max_parallel_tasks: 3
+  
+  # Pool de conexões HTTP
+  http_pool_connections: 10
+  http_pool_maxsize: 20
+  
+  # Otimizações
+  optimizations:
+    batch_api_calls: true
+    compress_context: true
+    lazy_load_memory: true
