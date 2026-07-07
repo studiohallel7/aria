@@ -31,6 +31,7 @@ from agent.core.cognition.drive import DriveSystem, DriveType
 from agent.core.cognition.critic import InternalCritic
 from agent.core.cognition.interpretation import ContinuousInterpreter, RawInput
 from agent.core.cognition.working_set import WorkingMemorySet
+from agent.core.cognition.body_anchor import BodyAnchor, BodyComponent, SensoryModality, MotorCapability
 from agent.core.autonomy.mode_manager import ModeManager, Mode
 from agent.core.autonomy.priorities import PriorityManager
 from agent.core.autonomy.triggers import TriggerManager
@@ -95,6 +96,13 @@ class AgentLoop:
         self.working_set = WorkingMemorySet(
             max_items=self.config.get("max_working_items", 20),
             ttl_seconds=self.config.get("working_set_ttl", 600)
+        )
+        
+        # Inicializa âncora corporal (body anchor) - define o "corpo" do agente
+        custom_body_description = self.config.get("custom_body_description")
+        self.body_anchor = BodyAnchor(
+            custom_description=custom_body_description,
+            config=self.config
         )
         
         # Inicializa sistema de resiliência
@@ -220,6 +228,28 @@ class AgentLoop:
             completed_tasks=0
         )
         
+        # Atualiza âncora corporal - registra inputs sensoriais
+        # Input temporal (percepção de tempo)
+        self.body_anchor.receive_sensory_input(
+            SensoryModality.TEMPORAL,
+            {"idle_time": idle_time, "cycle": self.cycle_count}
+        )
+        # Input sistêmico (estado do sistema)
+        self.body_anchor.receive_sensory_input(
+            SensoryModality.SYSTEM,
+            {"state": status.state.value, "errors": status.errors_in_cycle}
+        )
+        # Input textual (contexto)
+        context_summary = self.context_manager.get_summary()
+        if context_summary:
+            self.body_anchor.receive_sensory_input(
+                SensoryModality.TEXTUAL,
+                {"context": context_summary}
+            )
+        
+        # Atualiza estado corporal
+        body_state = self.body_anchor.get_body_state()
+        
         return {
             "state": status.state,
             "mode": status.mode,
@@ -228,11 +258,14 @@ class AgentLoop:
             "cycle_count": self.cycle_count,
             "errors_in_cycle": status.errors_in_cycle,
             "llm_calls_in_cycle": status.llm_calls_in_cycle,
-            "context_summary": self.context_manager.get_summary(),
+            "context_summary": context_summary,
             "boredom_level": boredom_state.level.value,
             "boredom_score": boredom_state.score,
             "dominant_drive": drive_state.dominant_drive.value if drive_state.dominant_drive else None,
-            "motivational_tension": drive_state.overall_tension
+            "motivational_tension": drive_state.overall_tension,
+            "body_health": body_state.overall_health,
+            "cognitive_load": body_state.cognitive_load,
+            "body_state": body_state
         }
     
     def _check_triggers(self) -> list:
@@ -291,6 +324,22 @@ class AgentLoop:
     
     def _think(self, intention: IntentionType) -> Optional[str]:
         """Fase 6: Pensar sobre a ação (interno, não exposto)."""
+        # Integra âncora corporal com sistemas cognitivos
+        self.body_anchor.integrate_with_cognition(
+            boredom_engine=self.boredom_engine,
+            drive_system=self.drive_system,
+            working_set=self.working_set,
+            memory_system=self.short_term_memory
+        )
+        
+        # Adiciona auto-percepção corporal ao working set
+        body_caps = self.body_anchor.get_capabilities_summary()
+        self.working_set.add_idea(
+            content=f"Corpo: {body_caps['sensory_modalities']} -> {body_caps['motor_capabilities']}",
+            tags=['body_anchor', 'capabilities'],
+            confidence=0.95
+        )
+        
         # Interpreta o contexto antes de pensar
         raw_input = RawInput(
             source="internal",
@@ -599,7 +648,7 @@ class AgentLoop:
         for lesson in reflection.lessons_learned:
             # Adiciona à memória de longo prazo
             self.long_term_memory.store(
-                content=f"Liçao aprendida: {lesson}",
+                content=f"Lição aprendida: {lesson}",
                 memory_type="semantic",
                 tags=['reflection', 'lesson_learned'],
                 importance=0.7
@@ -625,6 +674,12 @@ class AgentLoop:
             event_type="self_initiated",
             description="Reflexão completada",
             impact=15.0
+        )
+        
+        # Registra reflexão na âncora corporal como experiência aprendida
+        self.body_anchor.receive_sensory_input(
+            SensoryModality.SYSTEM,
+            {"reflection": True, "lessons": len(reflection.lessons_learned)}
         )
     
     def _register(self):
@@ -785,5 +840,13 @@ class AgentLoop:
                 "short_term_count": len(self.short_term_memory.get_all()) if hasattr(self.short_term_memory, 'get_all') else 0,
                 "long_term_count": self.memory_graph.get_stats().get("total_nodes", 0) if hasattr(self.memory_graph, 'get_stats') else 0,
                 "graph_stats": self.memory_graph.get_stats() if hasattr(self.memory_graph, 'get_stats') else {}
+            },
+            # Âncora corporal - estado do "corpo" do agente
+            "body_anchor_stats": {
+                "body_state": self.body_anchor.get_body_state().to_dict(),
+                "capabilities": self.body_anchor.get_capabilities_summary(),
+                "total_parts": len(self.body_anchor.body_parts),
+                "sensory_channels": len(self.body_anchor.sensory_channels),
+                "motor_actuators": len(self.body_anchor.motor_actuators)
             }
         }
