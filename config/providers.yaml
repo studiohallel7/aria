@@ -3,24 +3,24 @@
 
 providers:
   # OpenAI
-  - name: openai
+  openai:
     enabled: true
     type: openai
     base_url: https://api.openai.com/v1
     models:
-      - id: gpt-4o
+      - name: gpt-4o
         capabilities: [text, vision, reasoning]
         cost_per_1k_input: 0.005
         cost_per_1k_output: 0.015
         max_context: 128000
         priority: 1
-      - id: gpt-4o-mini
+      - name: gpt-4o-mini
         capabilities: [text, vision]
         cost_per_1k_input: 0.00015
         cost_per_1k_output: 0.0006
         max_context: 128000
         priority: 2
-      - id: o1-preview
+      - name: o1-preview
         capabilities: [reasoning, code]
         cost_per_1k_input: 0.015
         cost_per_1k_output: 0.06
@@ -28,52 +28,58 @@ providers:
         priority: 3
 
   # OpenRouter (agrega múltiplos modelos)
-  - name: openrouter
+  openrouter:
     enabled: true
     type: openrouter
     base_url: https://openrouter.ai/api/v1
     api_key_env: OPENROUTER_API_KEY
     models:
-      - id: anthropic/claude-3.5-sonnet
+      - name: anthropic/claude-3.5-sonnet
         capabilities: [text, vision, code]
         cost_per_1k_input: 0.003
         cost_per_1k_output: 0.015
         max_context: 200000
         priority: 1
-      - id: google/gemini-pro-1.5
+      - name: google/gemini-pro-1.5
         capabilities: [text, vision, code]
         cost_per_1k_input: 0.0025
         cost_per_1k_output: 0.0075
         max_context: 1000000
         priority: 2
-      - id: meta-llama/llama-3.1-405b-instruct
+      - name: meta-llama/llama-3.1-405b-instruct
         capabilities: [text, code]
         cost_per_1k_input: 0.0008
         cost_per_1k_output: 0.0008
         max_context: 32000
         priority: 3
 
-  # OpenCode Go (código especializado)
-  - name: opencode
-    enabled: false
+  # OpenCode Go (código especializado) - PRIORIDADE MÁXIMA
+  opencode:
+    enabled: true
     type: opencode
-    base_url: https://api.opencode.ai/v1
+    base_url: https://opencode.ai/zen/v1/chat/completions
     models:
-      - id: opencode-v1
-        capabilities: [code, debugging, refactoring]
-        cost_per_1k_input: 0.001
-        cost_per_1k_output: 0.002
+      - name: deepseek-v4-flash-free
+        capabilities: [code, debugging, refactoring, text]
+        cost_per_1k_input: 0.0
+        cost_per_1k_output: 0.0
         max_context: 64000
         priority: 1
+      - name: gpt-5.5
+        capabilities: [code, text, vision, reasoning]
+        cost_per_1k_input: 0.0
+        cost_per_1k_output: 0.0
+        max_context: 128000
+        priority: 2
 
   # Provider personalizado (adicione os seus)
-  - name: custom-provider
+  custom-provider:
     enabled: false
     type: openai_compatible
     base_url: YOUR_CUSTOM_URL
     api_key_env: CUSTOM_API_KEY
     models:
-      - id: custom-model-id
+      - name: custom-model-id
         capabilities: [text]
         cost_per_1k_input: 0.001
         cost_per_1k_output: 0.002
