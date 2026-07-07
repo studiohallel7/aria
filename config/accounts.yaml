@@ -1,0 +1,108 @@
+# Gerenciamento de Contas e API Keys
+# Adicione múltiplas contas para rotação automática
+
+accounts:
+  openai:
+    - id: account_1
+      name: "Primary OpenAI"
+      api_key_env: OPENAI_API_KEY_1
+      enabled: true
+      monthly_budget: 60.00
+      current_usage: 0.00
+      reset_date: "2025-02-01"
+      priority: 1
+      
+    - id: account_2
+      name: "Secondary OpenAI"
+      api_key_env: OPENAI_API_KEY_2
+      enabled: true
+      monthly_budget: 30.00
+      current_usage: 0.00
+      reset_date: "2025-02-15"
+      priority: 2
+      
+    - id: account_3
+      name: "Backup OpenAI"
+      api_key_env: OPENAI_API_KEY_3
+      enabled: false
+      monthly_budget: 10.00
+      current_usage: 0.00
+      reset_date: "2025-02-01"
+      priority: 3
+
+  openrouter:
+    - id: or_account_1
+      name: "Primary OpenRouter"
+      api_key_env: OPENROUTER_API_KEY_1
+      enabled: true
+      monthly_budget: 50.00
+      current_usage: 0.00
+      reset_date: "2025-02-01"
+      priority: 1
+      
+    - id: or_account_2
+      name: "Secondary OpenRouter"
+      api_key_env: OPENROUTER_API_KEY_2
+      enabled: true
+      monthly_budget: 20.00
+      current_usage: 0.00
+      reset_date: "2025-02-10"
+      priority: 2
+
+  opencode:
+    - id: oc_account_1
+      name: "OpenCode Primary"
+      api_key_env: OPENCODE_API_KEY_1
+      enabled: true
+      monthly_budget: 40.00
+      current_usage: 0.00
+      reset_date: "2025-02-01"
+      priority: 1
+
+# Configurações de rotação
+rotation:
+  # Estratégia de rotação: round_robin, least_used, cost_optimized
+  strategy: cost_optimized
+  
+  # Intervalo mínimo entre trocas (segundos)
+  min_rotation_interval: 300
+  
+  # Considerar histórico de sucesso/falha
+  use_success_rate: true
+  
+  # Peso do custo na decisão (0-1)
+  cost_weight: 0.4
+  
+  # Peso da latência na decisão (0-1)
+  latency_weight: 0.3
+  
+  # Peso da disponibilidade na decisão (0-1)
+  availability_weight: 0.3
+  
+  # Thresholds para rotação forçada
+  force_rotation_on_error: true
+  force_rotation_on_timeout: true
+  max_consecutive_failures: 3
+
+# Healthcheck das contas
+healthcheck:
+  # Habilitar verificação periódica
+  enabled: true
+  
+  # Intervalo entre checks (segundos)
+  interval: 600
+  
+  # Timeout do healthcheck (segundos)
+  timeout: 10
+  
+  # Modelo simples para teste
+  test_model: gpt-4o-mini
+  
+  # Prompt mínimo para teste
+  test_prompt: "Respond with OK"
+  
+  # Marcar conta como unhealthy após N falhas consecutivas
+  unhealthy_after_failures: 3
+  
+  # Tentar recuperar conta unhealthy após (segundos)
+  recovery_wait_time: 1800
