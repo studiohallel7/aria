@@ -1,0 +1,85 @@
+# Configuração de Personalidade do Agente Cognitivo
+# Este arquivo define a personalidade e comportamento do agente
+
+# Perfil de personalidade principal
+# Opções padrão: balanced, explorer, worker, scholar
+# Opções customizadas: creative_coder, analyst, innovator, mentor, 
+#                      researcher, optimizer, generalist, minimalist, visionary
+personality_profile: "balanced"
+
+# Configurações específicas do perfil (opcional - sobrescreve padrões)
+custom_settings:
+  # Exemplo: ajustar pesos de drives específicos
+  drive_weights:
+    # CURIOSITY: 1.5
+    # LEARNING: 1.8
+  
+  # Configurações de tédio (BoredomEngine)
+  boredom:
+    # idle_decay_rate: 0.5      # Pontos de tédio por segundo ocioso
+    # frustration_rate: 0.1     # Acúmulo de frustração
+    # curiosity_recovery: 0.3   # Recuperação de curiosidade
+    
+    # Thresholds para ações autônomas
+    thresholds:
+      # explore: 45.0
+      # learn: 55.0
+      # reflect: 65.0
+      # cleanup: 70.0
+      # ask_user: 80.0
+      # desperate_action: 90.0
+  
+  # Configurações do crítico interno (InternalCritic)
+  critic:
+    # ambiguity_threshold: 0.3        # Limite para ambiguidades
+    # require_fallback_plan: true     # Exige plano B para planos complexos
+    # auto_reject_critical: true      # Rejeita automaticamente planos críticos
+  
+  # Configurações da memória de trabalho (WorkingMemorySet)
+  working_memory:
+    # max_items: 20           # Máximo de itens na memória
+    # ttl_seconds: 600        # Tempo de vida dos itens (segundos)
+    # auto_promote_threshold: 0.8  # Confiança mínima para promover
+
+# Logging e monitoramento
+logging:
+  # Nível de log: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  
+  # Habilitar logs específicos de módulos
+  modules:
+    drive_system: false
+    boredom_engine: false
+    critic: false
+    interpreter: false
+    working_memory: false
+
+# Métricas e diagnóstico
+diagnostics:
+  # Habilitar coleta de métricas
+  enabled: true
+  
+  # Intervalo de reporte em segundos
+  report_interval: 300  # 5 minutos
+  
+  # Métricas para monitorar
+  metrics:
+    - overall_tension       # Tensão motivacional geral
+    - boredom_score         # Score de tédio
+    - dominant_drive        # Drive dominante atual
+    - health_score          # Score de saúde do sistema
+    - approval_rate         # Taxa de aprovação de planos
+
+# Evolução de personalidade (avançado)
+evolution:
+  # Habilitar ajuste automático baseado em feedback
+  enabled: false
+  
+  # Sensibilidade a ajustes (0.0 - 1.0)
+  sensitivity: 0.3
+  
+  # Mínimo de interações antes de ajustar
+  min_interactions: 50
+  
+  # Arquivo para salvar evolução
+  history_file: "memory/personality_evolution.json"
